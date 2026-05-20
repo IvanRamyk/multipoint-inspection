@@ -1,0 +1,19 @@
+defaults:
+  - default
+  - _self_
+
+# Override from default config
+id: DroneInspection-sheeprl-v0
+num_envs: 1
+sync_env: true
+screen_size: 64
+grayscale: true
+action_repeat: 1
+frame_stack: 1
+capture_video: false
+max_episode_steps: null
+
+wrapper:
+  _target_: envs.sheeprl_wrapper.make_drone_inspection_env
+  config_path: configs/sanity.yaml
+  render_mode: rgb_array

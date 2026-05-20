@@ -1,0 +1,24 @@
+[project]
+name = "drone-inspection-dreamer"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "gymnasium>=0.29",
+    "numpy",
+    "matplotlib",
+    "pyyaml",
+    "pyflyt>=0.29",
+]
+
+[project.optional-dependencies]
+dreamer = [
+    "sheeprl",
+    "lightning",
+    "tensorboard",
+    "torch",
+    "torchvision",
+]
+dev = ["jupyter", "ipykernel"]
+
+[tool.setuptools.packages.find]
+include = ["envs*", "eval*"]

@@ -1,0 +1,13 @@
+num_waypoints: 7
+flight_dome_size: 50.0
+waypoint_reach_distance: 1.0
+wind_enabled: true
+wind_strength: 0.5
+wind_ou_theta: 0.15
+wind_ou_sigma: 0.3
+num_obstacles: 5
+obstacle_size_range: [1.0, 3.0]
+max_episode_steps: 1000
+agent_hz: 30
+image_width: 64
+image_height: 64
