@@ -3,3 +3,7 @@
 /logs
 /.claude
 /results
+
+/drone_inspection_dreamer.egg-info
+/.idea
+CLAUDE.md
