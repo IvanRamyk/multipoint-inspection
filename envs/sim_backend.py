@@ -68,3 +68,22 @@ class SimBackend(ABC):
     @abstractmethod
     def step_simulation(self) -> None:
         """Advance simulation by one control step."""
+
+    # -- Optional capabilities (concrete no-op defaults) ------------------
+    # These are not part of the minimal contract; backends override them
+    # when supported. Defaults let the env call them unconditionally.
+
+    def apply_wind(self, wind_vec: np.ndarray) -> None:
+        """Apply an external wind disturbance.
+
+        Args:
+            wind_vec: (3,) raw wind vector in world frame (units are
+                backend-defined: PyFlyt treats it as a force scale, AirSim
+                as a wind velocity in m/s). Default: no-op.
+        """
+
+    def set_waypoint_color(self, index: int, color: list[float]) -> None:
+        """Recolor a waypoint marker for visualization. Default: no-op."""
+
+    def close(self) -> None:
+        """Release simulator resources. Default: no-op."""

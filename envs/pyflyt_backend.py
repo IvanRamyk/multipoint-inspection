@@ -14,6 +14,11 @@ _MAX_SPEED = 5.0
 _CAM_NEAR = 0.1
 _CAM_FAR = 100.0
 
+# Wind force scaling (Newtons per unit of OU wind output). Lives here so the
+# raw OU vector handed in by the env is interpreted in PyFlyt's own units;
+# net force is identical to the previous (env-side scaled) behavior.
+_WIND_FORCE_SCALE = 10.0
+
 
 class PyFlytBackend(SimBackend):
     """Simulator backend using PyFlyt (PyBullet) for drone physics.
@@ -222,12 +227,14 @@ class PyFlytBackend(SimBackend):
         for _ in range(self._steps_per_agent_step):
             self._aviary.step()
 
-    def apply_wind(self, wind_force: np.ndarray) -> None:
+    def apply_wind(self, wind_vec: np.ndarray) -> None:
         """Apply an external wind force to the drone.
 
         Args:
-            wind_force: (3,) force vector in Newtons, world frame.
+            wind_vec: (3,) raw OU wind vector, world frame. Scaled to a
+                force in Newtons internally by ``_WIND_FORCE_SCALE``.
         """
+        wind_force = np.asarray(wind_vec, dtype=np.float64) * _WIND_FORCE_SCALE
         self._aviary.applyExternalForce(
             objectUniqueId=self._drone_id,
             linkIndex=-1,

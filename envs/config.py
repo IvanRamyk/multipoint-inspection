@@ -39,6 +39,10 @@ class EnvConfig:
     image_width: int = 64
     image_height: int = 64
 
+    # Simulator backend: "pyflyt" (PyBullet, default) or "airsim" (Cosys-AirSim,
+    # requires Linux/Windows + Unreal Engine 5; not available on macOS).
+    backend: str = "pyflyt"
+
     # Potential-based reward shaping coefficient.
     # reward += reward_shaping * (prev_target_dist - curr_target_dist) each step
     # where target = nearest unvisited waypoint, or base if all visited.

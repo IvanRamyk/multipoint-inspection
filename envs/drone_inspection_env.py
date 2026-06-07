@@ -19,11 +19,40 @@ _REWARD_MISSION_COMPLETE = 50.0
 _REWARD_COLLISION = -100.0
 _REWARD_TIME_PENALTY = -0.01
 
-# Wind force scaling (Newtons per unit of OU output).
-_WIND_FORCE_SCALE = 10.0
-
 # Minimum separation between waypoints in meters.
 _MIN_WAYPOINT_SEPARATION = 3.0
+
+
+def _make_backend(config: EnvConfig, render_mode: str | None) -> SimBackend:
+    """Construct a simulator backend from config.
+
+    Args:
+        config: Environment configuration (uses ``config.backend``).
+        render_mode: Gymnasium render mode; "human" opens a GUI (PyFlyt only).
+
+    Returns:
+        A SimBackend instance.
+
+    Raises:
+        ValueError: If ``config.backend`` is not a known backend name.
+    """
+    name = getattr(config, "backend", "pyflyt").lower()
+    common = dict(
+        image_width=config.image_width,
+        image_height=config.image_height,
+        agent_hz=config.agent_hz,
+    )
+    if name == "pyflyt":
+        return PyFlytBackend(render=(render_mode == "human"), **common)
+    if name == "airsim":
+        # Lazy import: the airsim package is unavailable on macOS, so importing
+        # it at module load would break PyFlyt-only environments.
+        from envs.airsim_backend import AirSimBackend
+
+        return AirSimBackend(**common)
+    raise ValueError(
+        f"Unknown backend {name!r}; expected 'pyflyt' or 'airsim'."
+    )
 
 
 class DroneInspectionEnv(gymnasium.Env):
@@ -54,12 +83,7 @@ class DroneInspectionEnv(gymnasium.Env):
             self.config = EnvConfig.from_yaml(config_path)
         else:
             self.config = EnvConfig()
-        self.backend = backend or PyFlytBackend(
-            image_width=self.config.image_width,
-            image_height=self.config.image_height,
-            agent_hz=self.config.agent_hz,
-            render=(render_mode == "human"),
-        )
+        self.backend = backend or _make_backend(self.config, render_mode)
 
         N = self.config.num_waypoints
         state_dim = 12 + 4 * N
@@ -162,11 +186,11 @@ class DroneInspectionEnv(gymnasium.Env):
         # Apply action.
         self.backend.apply_action(action)
 
-        # Apply wind.
+        # Apply wind. Each backend interprets the raw OU vector in its own
+        # units (no-op on backends that don't model wind).
         if self.config.wind_enabled:
             wind_vec = self._wind.step()
-            if isinstance(self.backend, PyFlytBackend):
-                self.backend.apply_wind(wind_vec * _WIND_FORCE_SCALE)
+            self.backend.apply_wind(wind_vec)
 
         # Step simulation.
         self.backend.step_simulation()
@@ -191,11 +215,9 @@ class DroneInspectionEnv(gymnasium.Env):
                     if dist < self.config.waypoint_reach_distance:
                         self._visited[i] = True
                         reward += _REWARD_WAYPOINT
-                        # Visual feedback: change color to blue.
-                        if isinstance(self.backend, PyFlytBackend):
-                            self.backend.set_waypoint_color(
-                                i, [0.0, 0.5, 1.0, 0.6]
-                            )
+                        # Visual feedback: change color to blue (no-op on
+                        # backends without marker visualization).
+                        self.backend.set_waypoint_color(i, [0.0, 0.5, 1.0, 0.6])
 
         # Check mission complete: all visited and back at base.
         if not terminated and np.all(self._visited):
@@ -228,8 +250,7 @@ class DroneInspectionEnv(gymnasium.Env):
 
     def close(self) -> None:
         """Clean up simulator resources."""
-        if isinstance(self.backend, PyFlytBackend):
-            self.backend.close()
+        self.backend.close()
 
     # -- Properties for external access -----------------------------------
 
