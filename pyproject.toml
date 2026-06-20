@@ -17,6 +17,7 @@ dreamer = [
     "tensorboard",
     "torch",
     "torchvision",
+    "imageio[ffmpeg]",
 ]
 dev = ["jupyter", "ipykernel"]
 

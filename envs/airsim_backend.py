@@ -26,6 +26,7 @@ Place at ``~/Documents/AirSim/settings.json`` (Linux: ``~/Documents/AirSim``)::
       "SettingsVersion": 2.0,
       "SimMode": "Multirotor",
       "ClockSpeed": 5.0,
+      "ViewMode": "NoDisplay",
       "Vehicles": {
         "drone": {
           "VehicleType": "SimpleFlight",
@@ -36,14 +37,24 @@ Place at ``~/Documents/AirSim/settings.json`` (Linux: ``~/Documents/AirSim``)::
               ],
               "X": 0.30, "Y": 0.0, "Z": 0.0,
               "Pitch": 0.0, "Roll": 0.0, "Yaw": 0.0
+            },
+            "chase": {
+              "CaptureSettings": [
+                {"ImageType": 0, "Width": 640, "Height": 480, "FOV_Degrees": 90}
+              ],
+              "X": -3.0, "Y": 0.0, "Z": -1.5,
+              "Pitch": 15.0, "Roll": 0.0, "Yaw": 0.0
             }
           }
         }
       }
     }
 
-``ImageType: 1`` is ``DepthPlanar``. ``ClockSpeed`` > 1 speeds up the sim;
-stepping is done deterministically via pause + ``simContinueForTime``.
+``ImageType: 0`` is Scene (RGB). ``ImageType: 1`` is DepthPlanar.
+The ``chase`` camera sits 3 m behind and 1.5 m above the drone (NED: Z negative
+= up) and is used only for video recording — not for training observations.
+``ClockSpeed`` > 1 speeds up the sim; stepping is done deterministically via
+pause + ``simContinueForTime``.
 """
 
 from __future__ import annotations
@@ -227,6 +238,44 @@ class AirSimBackend(SimBackend):
         """
         wx, wy, wz = _enu_to_ned(wind_vec)
         self.client.simSetWind(self._airsim.Vector3r(wx, wy, wz))
+
+    def get_video_frame(
+        self,
+        camera_name: str = "chase",
+        width: int = 640,
+        height: int = 480,
+    ) -> np.ndarray | None:
+        """Capture an RGB video frame from the named camera.
+
+        Uses ImageType.Scene (photorealistic render). Intended for recording
+        during eval — not called during training.
+
+        Args:
+            camera_name: Camera defined in settings.json (default: "chase").
+            width: Expected image width in pixels.
+            height: Expected image height in pixels.
+
+        Returns:
+            (H, W, 3) uint8 RGB array, or None on failure.
+        """
+        req = self._airsim.ImageRequest(
+            camera_name,
+            self._airsim.ImageType.Scene,
+            pixels_as_float=False,
+            compress=False,
+        )
+        try:
+            responses = self.client.simGetImages(
+                [req], vehicle_name=self.vehicle_name
+            )
+            resp = responses[0]
+            if len(resp.image_data_uint8) == 0:
+                return None
+            img = np.frombuffer(resp.image_data_uint8, dtype=np.uint8)
+            img = img.reshape(height, width, 3)
+            return img
+        except Exception:
+            return None
 
     def close(self) -> None:
         """Release control and unpause the simulator."""

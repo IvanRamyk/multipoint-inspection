@@ -12,6 +12,11 @@ import torch
 from lightning import Fabric
 from omegaconf import OmegaConf
 
+# Video recording parameters
+_VIDEO_W = 640
+_VIDEO_H = 480
+_VIDEO_FPS = 30
+
 # Ensure project root is on the path.
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
@@ -36,6 +41,7 @@ def main() -> None:
     parser.add_argument("--render", action="store_true", help="Open PyBullet GUI")
     parser.add_argument("--greedy", action="store_true", help="Use greedy (deterministic) actions")
     parser.add_argument("--seed", type=int, default=0, help="Random seed")
+    parser.add_argument("--record", action="store_true", help="Record MP4 video of each episode (no GUI needed)")
     args = parser.parse_args()
 
     ckpt_path = Path(args.checkpoint)
@@ -63,6 +69,14 @@ def main() -> None:
         env_config = EnvConfig.from_yaml(args.config)
     else:
         env_config = EnvConfig.from_yaml("configs/easy.yaml")
+
+    if args.record:
+        try:
+            import imageio
+        except ImportError:
+            print("ERROR: imageio is required for --record. Install with:")
+            print("  pip install imageio[ffmpeg]")
+            sys.exit(1)
 
     render_mode = "human" if args.render else None
     raw_env = DroneInspectionEnv(config=env_config, render_mode=render_mode)
@@ -121,6 +135,34 @@ def main() -> None:
     base = np.array(env_config.base_position)
     reach = env_config.waypoint_reach_distance
 
+    def capture_frame(backend) -> np.ndarray | None:
+        """Capture an RGB frame from the active backend. Returns (H, W, 3) uint8."""
+        # AirSim: use the photorealistic chase camera defined in settings.json
+        if hasattr(backend, "get_video_frame"):
+            return backend.get_video_frame(width=_VIDEO_W, height=_VIDEO_H)
+        # PyBullet: render from a chase camera using TinyRenderer
+        av = getattr(backend, "_aviary", None)
+        if av is None:
+            return None
+        state = av.state(0)
+        pos = state[3]
+        eye = pos + np.array([0.0, -6.0, 4.0])
+        proj = av.computeProjectionMatrixFOV(
+            fov=60.0, aspect=_VIDEO_W / _VIDEO_H, nearVal=0.1, farVal=200.0
+        )
+        view = av.computeViewMatrix(
+            cameraEyePosition=eye.tolist(),
+            cameraTargetPosition=pos.tolist(),
+            cameraUpVector=[0.0, 0.0, 1.0],
+        )
+        _, _, rgba, _, _ = av.getCameraImage(
+            width=_VIDEO_W, height=_VIDEO_H,
+            viewMatrix=list(view), projectionMatrix=list(proj),
+            renderer=av.ER_TINY_RENDERER,
+        )
+        rgb = np.array(rgba, dtype=np.uint8).reshape(_VIDEO_H, _VIDEO_W, 4)[:, :, :3]
+        return rgb
+
     for ep in range(args.episodes):
         obs, info = env.reset(seed=args.seed + ep)
         player.init_states()
@@ -128,6 +170,7 @@ def main() -> None:
         done = False
         total_reward = 0.0
         steps = 0
+        frames: list = []
 
         while not done:
             # Preprocess observation for the player.
@@ -145,6 +188,11 @@ def main() -> None:
             total_reward += reward
             steps += 1
             done = terminated or truncated
+
+            if args.record:
+                frame = capture_frame(raw_env.backend)
+                if frame is not None:
+                    frames.append(frame)
 
         wp_visited = info["waypoints_visited"]
         total_wp = info["total_waypoints"]
@@ -174,6 +222,11 @@ def main() -> None:
                 reach_radius=reach,
                 title=label,
             )
+
+        if args.record and frames:
+            video_path = save_dir / f"eval_{tag}.mp4"
+            imageio.mimwrite(str(video_path), frames, fps=_VIDEO_FPS, macro_block_size=None)
+            print(f"  Video saved → {video_path}")
 
     env.close()
     print("\nDone.")

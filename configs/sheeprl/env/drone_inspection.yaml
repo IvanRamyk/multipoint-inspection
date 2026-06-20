@@ -15,5 +15,5 @@ max_episode_steps: null
 
 wrapper:
   _target_: envs.sheeprl_wrapper.make_drone_inspection_env
-  config_path: configs/sanity_tight.yaml
+  config_path: configs/easy.yaml
   render_mode: rgb_array

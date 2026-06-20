@@ -1,0 +1,30 @@
+# DreamerV3 (sheeprl) GPU training image for vast.ai / RunPod / any CUDA host.
+#
+# Deps are installed from pyproject.toml only — code is NOT baked in.
+# This means the image only needs rebuilding when dependencies change,
+# not on every code edit. Code is rsynced in at runtime by train_remote.sh.
+#
+# Build & push:  bash deploy/build_push_image.sh <dockerhub-user>
+# Use on vast.ai: --image <dockerhub-user>/dreamer-train:latest
+
+# pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime ships Python 3.11, which
+# satisfies sheeprl's <3.12 constraint. Do NOT upgrade this base image to
+# one that ships Python 3.12 without checking sheeprl compatibility first.
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
+
+# Headless GL/X deps for PyBullet/PyFlyt DIRECT mode
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git libgl1 libglib2.0-0 libgomp1 tmux && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace/dreamer
+
+# Copy only the dependency manifest, install deps, then discard the manifest.
+# Keeps code out of the image so rebuilds are only needed when deps change.
+COPY pyproject.toml ./pyproject.toml
+# Create a minimal stub so pip can do an editable install of the metadata
+RUN mkdir -p envs eval && touch envs/__init__.py eval/__init__.py
+RUN pip install --no-cache-dir -e ".[dreamer]"
+
+EXPOSE 6006
+CMD ["bash"]

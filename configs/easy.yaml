@@ -1,9 +1,11 @@
 num_waypoints: 3
 flight_dome_size: 30.0
-waypoint_reach_distance: 1.5
+waypoint_reach_distance: 3.0    # must be >= _MIN_WAYPOINT_SEPARATION (3.0) so waypoints are discoverable
 wind_enabled: false
 num_obstacles: 0
 max_episode_steps: 500
 agent_hz: 30
 image_width: 64
 image_height: 64
+reward_shaping: 1.0             # potential-based shaping so movement isn't punished before waypoints are found
+collision_penalty: -10.0        # softened from -100 so early collisions don't kill the actor
