@@ -25,9 +25,9 @@ def main() -> int:
     args = ap.parse_args()
 
     try:
-        import airsim
+        import cosysairsim as airsim
     except ImportError:
-        print("FAIL: airsim client not installed in this venv.")
+        print("FAIL: cosysairsim client not installed in this venv.")
         return 2
 
     print(f"[1/3] connecting to AirSim at {args.ip}:41451 ...")

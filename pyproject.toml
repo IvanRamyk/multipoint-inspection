@@ -15,9 +15,10 @@ dreamer = [
     "sheeprl",
     "lightning",
     "tensorboard",
-    "torch",
-    "torchvision",
+    "torch>=2.4.1,<2.6",
+    "torchvision>=0.19,<0.21",
     "imageio[ffmpeg]",
+    "cosysairsim",
 ]
 dev = ["jupyter", "ipykernel"]
 

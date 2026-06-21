@@ -22,7 +22,7 @@ SETTINGS_DIR="${HOME}/Documents/AirSim"
 
 # Cosys-AirSim Blocks prebuilt Linux binary.
 # Check https://github.com/Cosys-Lab/Cosys-AirSim/releases for latest.
-AIRSIM_URL="${1:-https://github.com/Cosys-Lab/Cosys-AirSim/releases/download/v2.0.0-UE5.3/Blocks_Ubuntu.zip}"
+AIRSIM_URL="${1:-https://github.com/Cosys-Lab/Cosys-AirSim/releases/download/5.5-v3.3/Blocks_packaged_Linux_55_33.zip}"
 
 echo "==> [1/4] Installing Vulkan runtime and UE5 deps..."
 apt-get update -qq

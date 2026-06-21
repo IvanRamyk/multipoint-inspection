@@ -165,10 +165,20 @@ class AirSimBackend(SimBackend):
         nx, ny, nz = _enu_to_ned(drone_start)
         pose = airsim.Pose(
             airsim.Vector3r(nx, ny, nz),
-            airsim.to_quaternion(0.0, 0.0, 0.0),
+            airsim.Quaternionr(x_val=0.0, y_val=0.0, z_val=0.0, w_val=1.0),
         )
         self.client.simSetVehiclePose(pose, ignore_collision=True,
                                       vehicle_name=self.vehicle_name)
+
+        # Hover briefly (physics running) so the PID warms up and the drone
+        # is actually airborne before we freeze the sim. Without this, the
+        # drone slowly falls after simSetVehiclePose because the motor
+        # controllers haven't stabilised from rest.
+        self.client.simPause(False)
+        self.client.moveByVelocityAsync(
+            0.0, 0.0, 0.0, duration=0.5, vehicle_name=self.vehicle_name
+        )
+        self.client.simContinueForTime(0.5)
 
         # Pause so steps advance deterministically via simContinueForTime.
         self.client.simPause(True)
