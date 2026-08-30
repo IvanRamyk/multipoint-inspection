@@ -10,7 +10,10 @@
 # Requires: vastai CLI authenticated (vastai set api-key <KEY>)
 set -euo pipefail
 
-VASTAI="/Users/ivan.ramyk/dev/personal/dreamer/venv/bin/vastai"
+# Resolve the vastai CLI: an explicit $VASTAI wins, then whatever is on PATH,
+# then this checkout's venv. Keeping it a variable lets the script run from any
+# worktree instead of only the one it was written in.
+VASTAI="${VASTAI:-$(command -v vastai || echo ./venv/bin/vastai)}"
 OFFER_ID="${1:?Usage: create_instance.sh <OFFER_ID>}"
 
 # pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime is on DockerHub even if vast UI

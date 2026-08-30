@@ -1,8 +1,21 @@
 /else
 /venv
 /logs
-/.claude
 /results
+
+# The autonomous-experiment workflow lives in .claude/ and IS version-controlled:
+# agent definitions, the loop command, and project settings. Everything else
+# under .claude/ is local session state.
+/.claude/*
+!/.claude/agents/
+!/.claude/commands/
+!/.claude/hooks/
+!/.claude/settings.json
+
+# Volatile orchestrator state. The campaign artifacts under experiments/campaigns/
+# are tracked; the live state files are not.
+/experiments/state/*
+!/experiments/state/.gitkeep
 
 /drone_inspection_dreamer.egg-info
 /.idea

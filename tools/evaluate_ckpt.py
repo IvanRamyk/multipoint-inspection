@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""Evaluate a finished run's newest checkpoint and record the result.
+
+This is the acceptance-gate primitive. `Rewards/rew_avg` from TensorBoard is only
+a proxy for success — sheeprl never logs `info["is_success"]` — so a real number
+requires rolling out the policy. This wraps scripts/eval_target_ckpt.py, pins the
+evaluation to the run's registered env config (never a different, easier one),
+and writes the JSON the aggregator and the reviewer read.
+
+    tools/evaluate_ckpt.py --campaign c --run-id R1-chase_easy2-s1 --episodes 30
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import random
+import subprocess
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _state as st  # noqa: E402
+
+
+def newest_checkpoint(run_dir: Path) -> Path | None:
+    """Highest-step checkpoint in a run directory.
+
+    Sorted by the numeric step parsed from ckpt_<step>_0.ckpt rather than by
+    mtime: a re-fetched older checkpoint would otherwise look newest.
+    """
+    cks = list((run_dir / "checkpoint").glob("ckpt_*.ckpt"))
+    if not cks:
+        return None
+    def step_of(p: Path) -> int:
+        try:
+            return int(p.stem.split("_")[1])
+        except (IndexError, ValueError):
+            return -1
+    return max(cks, key=step_of)
+
+
+def resolve_run_dir(rec: dict) -> Path:
+    """Local run directory for a record, falling back to a newest-run guess."""
+    if rec.get("local_run_dir"):
+        candidate = Path(rec["local_run_dir"])
+        if not candidate.is_absolute():
+            candidate = st.REPO_ROOT / candidate
+        if candidate.is_dir():
+            return candidate
+    raise SystemExit(
+        f"run {rec['run_id']} has no usable local_run_dir. Fetch it first with "
+        "deploy/fetch_results.sh, then set local_run_dir on the record."
+    )
+
+
+def fake_eval(rec: dict, args: argparse.Namespace) -> dict:
+    """Synthetic episodes for pipeline verification. Never touches torch."""
+    rng = random.Random(f"{rec['run_id']}:{args.seed}")
+    results = []
+    for i in range(args.episodes):
+        caught = rng.random() < args.fake_success_rate
+        results.append({
+            "episode": i + 1,
+            "seed": args.seed + i,
+            "caught": caught,
+            "steps": rng.randint(80, 240) if caught else 600,
+            "min_dist": round(rng.uniform(0.4, 1.8) if caught else rng.uniform(3.0, 14.0), 3),
+            "reward": round(rng.uniform(35.0, 60.0) if caught else rng.uniform(-25.0, -2.0), 3),
+        })
+    caught_flags = [r["caught"] for r in results]
+    return {
+        "checkpoint": "<fake>",
+        "ckpt_sha256": "<fake>",
+        "step_tag": "fake",
+        "task": args.task,
+        "env_config": rec["env_config"],
+        "episodes": len(results),
+        "eval_seed_base": args.seed,
+        "greedy": True,
+        "success_rate": sum(caught_flags) / len(caught_flags),
+        "successes": sum(caught_flags),
+        "mean_reward": sum(r["reward"] for r in results) / len(results),
+        "mean_steps": sum(r["steps"] for r in results) / len(results),
+        "mean_min_dist": sum(r["min_dist"] for r in results) / len(results),
+        "results": results,
+        "fake": True,
+    }
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Evaluate a run's newest checkpoint.")
+    ap.add_argument("--campaign", required=True)
+    ap.add_argument("--run-id", required=True)
+    ap.add_argument("--task", default="chase", choices=("chase", "target"))
+    ap.add_argument("--episodes", type=int, default=30)
+    ap.add_argument("--seed", type=int, default=1000,
+                    help="Eval seed base. The reviewer must use a DIFFERENT base.")
+    ap.add_argument("--checkpoint", default=None,
+                    help="Explicit checkpoint path (default: the run's newest).")
+    ap.add_argument("--out", default=None, help="Output JSON path (default: campaign evals/).")
+    ap.add_argument("--tag", default=None,
+                    help="Filename suffix, e.g. 'review', so a re-eval does not overwrite.")
+    ap.add_argument("--plots", action="store_true", help="Also render plots (slow).")
+    ap.add_argument("--force", action="store_true", help="Re-evaluate even if the JSON exists.")
+    ap.add_argument("--fake", action="store_true",
+                    help="Synthesise episodes instead of running a policy. Verification only.")
+    ap.add_argument("--fake-success-rate", type=float, default=0.7)
+    args = ap.parse_args()
+
+    rec = st.find_run(args.campaign, args.run_id)
+    if rec is None:
+        raise SystemExit(f"no run {args.run_id} registered in campaign {args.campaign}")
+
+    evals_dir = st.campaign_dir(args.campaign) / "evals"
+    suffix = f"_{args.tag}" if args.tag else ""
+    out_path = Path(args.out) if args.out else evals_dir / f"{args.run_id}{suffix}.json"
+    if out_path.exists() and not args.force:
+        print(f"eval already exists, skipping: {out_path}  (use --force to redo)")
+        print(out_path.read_text())
+        return 0
+
+    if args.fake:
+        payload = fake_eval(rec, args)
+        payload.update({
+            "run_id": args.run_id,
+            "config_hash": rec["config_hash"],
+            "rung": rec.get("rung"),
+            "seed": rec.get("seed"),
+        })
+        st.write_json_atomic(out_path, payload)
+    else:
+        run_dir = resolve_run_dir(rec)
+        ckpt = Path(args.checkpoint) if args.checkpoint else newest_checkpoint(run_dir)
+        if ckpt is None:
+            raise SystemExit(f"no checkpoints under {run_dir}/checkpoint")
+
+        cmd = [
+            str(st.REPO_ROOT / "venv/bin/python"),
+            str(st.REPO_ROOT / "scripts/eval_target_ckpt.py"), str(ckpt),
+            "--task", args.task,
+            # Pinned to the REGISTERED config, not a caller-supplied one. This is
+            # what stops a rung from being quietly graded on an easier task.
+            "--config", rec["env_config"],
+            "--episodes", str(args.episodes),
+            "--seed", str(args.seed),
+            "--json", str(out_path),
+        ]
+        if not Path(cmd[0]).exists():
+            cmd[0] = sys.executable
+        if not args.plots:
+            cmd.append("--no-plots")
+        print(f"==> {' '.join(cmd)}")
+        proc = subprocess.run(cmd, cwd=str(st.REPO_ROOT), check=False)
+        if proc.returncode != 0:
+            raise SystemExit(f"eval_target_ckpt.py exited {proc.returncode}")
+
+        payload = json.loads(out_path.read_text())
+        payload.update({
+            "run_id": args.run_id,
+            "config_hash": rec["config_hash"],
+            "rung": rec.get("rung"),
+            "seed": rec.get("seed"),
+        })
+        st.write_json_atomic(out_path, payload)
+
+    st.update_run(args.campaign, args.run_id, status="evaluated", eval={
+        "path": str(out_path.relative_to(st.REPO_ROOT)),
+        "success_rate": payload["success_rate"],
+        "episodes": payload["episodes"],
+        "eval_seed_base": payload["eval_seed_base"],
+    })
+    st.journal(args.campaign,
+               f"eval {args.run_id}: success={payload['success_rate']:.0%} "
+               f"({payload['successes']}/{payload['episodes']} eps, seed base {args.seed}) "
+               f"-> {out_path.name}")
+    print(f"\nsuccess_rate={payload['success_rate']:.3f}  path={out_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

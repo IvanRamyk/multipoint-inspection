@@ -6,11 +6,12 @@
 set -euo pipefail
 
 LIMIT="${2:-10}"
+VASTAI="${VASTAI:-$(command -v vastai || echo ./venv/bin/vastai)}"
 
 echo "==> Searching vast.ai for cheapest GPU (>=16GB VRAM, CUDA>=12, reliable)..."
 echo ""
 
-vastai search offers \
+"$VASTAI" search offers \
   'reliability > 0.98 num_gpus=1 gpu_ram >= 16 cuda_vers >= 12.0 inet_down > 100 disk_space >= 20' \
   --order 'dph_total asc' \
   --limit "$LIMIT"

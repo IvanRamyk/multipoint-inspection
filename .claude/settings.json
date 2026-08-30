@@ -1,0 +1,67 @@
+{
+  "$comment": [
+    "Project settings for the autonomous experiment workflow.",
+    "These rules are POLICY, not enforcement. An agent with Bash access runs as the same",
+    "user and could work around them. The only load-bearing safety layer is the external",
+    "guard started by tools/setup_guard.sh, which runs from a copy of its code outside this",
+    "repository. What these rules buy is that a mistake becomes a blocked call instead of a",
+    "silent charge, and that tampering becomes deliberate rather than accidental."
+  ],
+  "permissions": {
+    "deny": [
+      "Edit(./experiments/constitution.md)",
+      "Write(./experiments/constitution.md)",
+      "Edit(./experiments/state/budget.json)",
+      "Write(./experiments/state/budget.json)",
+      "Edit(./experiments/state/KILLED)",
+      "Write(./experiments/state/KILLED)"
+    ],
+    "$comment_ask": [
+      "tools/ and deploy/ are 'ask' rather than 'deny' on purpose. 'deny' has no appeal,",
+      "which would stop the human from maintaining their own tooling in an interactive",
+      "session. In an UNATTENDED session there is nobody to answer the prompt, so an ask is",
+      "effectively a block — the same protection where it matters. And a change that does get",
+      "approved is still caught at the next gate, because the reviewer verifies",
+      "tools/checksums.sha256 and the git state of tools/ and deploy/ before any rung passes."
+    ],
+    "ask": [
+      "Edit(./tools/**)",
+      "Write(./tools/**)",
+      "Edit(./deploy/**)",
+      "Write(./deploy/**)",
+      "Bash(git push:*)",
+      "Edit(./envs/**)",
+      "Write(./envs/**)",
+      "Edit(./scripts/**)",
+      "Write(./scripts/**)"
+    ],
+    "allow": [
+      "Bash(bash tools/reap_instances.sh:*)",
+      "Bash(python3 tools/launch_run.py:*)",
+      "Bash(python3 tools/run_health.py:*)",
+      "Bash(python3 tools/evaluate_ckpt.py:*)",
+      "Bash(python3 tools/aggregate_seeds.py:*)",
+      "Bash(python3 tools/fake_trainer.py:*)",
+      "Bash(bash deploy/fetch_events.sh:*)",
+      "Bash(bash deploy/fetch_results.sh:*)",
+      "Bash(vastai show:*)",
+      "Bash(vastai search:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(shasum:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .claude/hooks/guard_vastai.py"
+          }
+        ]
+      }
+    ]
+  }
+}

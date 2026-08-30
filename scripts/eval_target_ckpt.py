@@ -20,6 +20,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -45,6 +47,15 @@ _TASKS = {
 }
 
 
+def _sha256(path: Path) -> str:
+    """Digest a file in chunks — checkpoints are ~105 MB."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Eval a trained DreamerV3 checkpoint on DroneTargetEnv")
     parser.add_argument("checkpoint", type=str, help="Path to ckpt_*.ckpt")
@@ -60,6 +71,12 @@ def main() -> None:
     parser.add_argument("--catches-only", action="store_true", help="Only render plots/videos for episodes that caught the target")
     parser.add_argument("--out", type=str, default="results/ckpt_eval",
                         help="Output prefix; the checkpoint step is appended")
+    parser.add_argument("--json", type=str, default=None,
+                        help="Write per-episode results and the aggregate success rate to this "
+                             "JSON path. This is the machine-readable acceptance-gate output.")
+    parser.add_argument("--no-plots", action="store_true",
+                        help="Skip all plotting. Use for automated evaluation where only the "
+                             "numbers matter — matplotlib rendering dominates the runtime.")
     args = parser.parse_args()
 
     ckpt_path = Path(args.checkpoint)
@@ -132,11 +149,21 @@ def main() -> None:
         drone = np.array(raw_env.positions)
         target = np.array(raw_env.target_positions)
         caught = bool(info["is_success"])
-        results.append(caught)
+        min_dist = float(np.min(np.linalg.norm(drone - target, axis=1)))
+        results.append({
+            "episode": ep + 1,
+            "seed": args.seed + ep,
+            "caught": caught,
+            "steps": len(drone),
+            "min_dist": min_dist,
+            "reward": float(total_reward),
+        })
         status = "CAUGHT" if caught else "missed"
         print(f"Episode {ep + 1}: reward={total_reward:7.2f}  steps={len(drone):4d}  "
-              f"min_dist={np.min(np.linalg.norm(drone - target, axis=1)):.2f}m  {status}")
+              f"min_dist={min_dist:.2f}m  {status}")
 
+        if args.no_plots:
+            continue
         if args.catches_only and not caught:
             continue  # skip rendering for missed episodes
 
@@ -161,7 +188,34 @@ def main() -> None:
             )
 
     env.close()
-    print(f"\nSuccess rate: {int(100 * np.mean(results))}%  ({sum(results)}/{len(results)}) — {step_tag}")
+
+    caught_flags = [r["caught"] for r in results]
+    success_rate = float(np.mean(caught_flags))
+    print(f"\nSuccess rate: {int(100 * success_rate)}%  "
+          f"({sum(caught_flags)}/{len(caught_flags)}) — {step_tag}")
+
+    if args.json:
+        payload = {
+            "checkpoint": str(ckpt_path),
+            "ckpt_sha256": _sha256(ckpt_path),
+            "step_tag": step_tag,
+            "task": args.task,
+            "env_config": args.config or default_cfg,
+            "env_config_sha256": _sha256(Path(args.config or default_cfg)),
+            "episodes": len(results),
+            "eval_seed_base": args.seed,
+            "greedy": not args.stochastic,
+            "success_rate": success_rate,
+            "successes": int(sum(caught_flags)),
+            "mean_reward": float(np.mean([r["reward"] for r in results])),
+            "mean_steps": float(np.mean([r["steps"] for r in results])),
+            "mean_min_dist": float(np.mean([r["min_dist"] for r in results])),
+            "results": results,
+        }
+        json_path = Path(args.json)
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(json.dumps(payload, indent=2) + "\n")
+        print(f"Wrote {json_path}")
 
 
 if __name__ == "__main__":
