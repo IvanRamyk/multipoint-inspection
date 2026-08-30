@@ -58,7 +58,21 @@ In other words `DroneChaseEnv` is a *rendezvous* task, not an interception task.
 `EnvConfig` changes that, because evasion is not a parameter — the target has no term that
 depends on the pursuer's position.
 
-## Recommendation
+## What this does and does not justify
+
+It justifies bounding the campaign's **claim**: this task does not show that RL is needed for
+interception, and the report must not imply it does.
+
+It does **not** justify cancelling the campaign, and an earlier draft of the spec wrongly did.
+The first autonomous session's job is to prove the loop works unattended on real GPU runs, and
+a task with a known answer is the right control for that — if something goes wrong, a familiar
+task tells you it was the pipeline. Pairing an unproven environment change with an unproven
+loop on the same night makes both undebuggable.
+
+So: the reproduction campaign runs as planned, with its claim stated honestly, and the change
+below belongs to the campaign after it.
+
+## Recommendation for the NEXT campaign
 
 Make the target evade, then re-measure. `_target_command` is six lines; adding a repulsion
 term from the pursuer, scaled by how close it is, is roughly ten:
