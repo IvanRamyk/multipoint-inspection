@@ -54,14 +54,28 @@ did not write (constitution §3.3). The behaviour gate still applies to every ru
 Reserve **$2 unspent**. Drop R4 first, then R3. If R1 needs a retry seed, R4 is cancelled.
 Concurrency ≤ 3.
 
+## Scope (human-directed 2026-08-30): R3 and R4 dropped, reserve for a fix-campaign
+
+Total vast credit is $17.87 and campaign 1's full ladder is ~$14.5, leaving no room for an
+autonomous rerun if a rung fails. Per the human's call, campaign 1 runs **R1 + R2 only** (~$9),
+banking ~$8 for a possible *config-level* fix-campaign. This is the spec's own budget mechanism
+("Drop R4 first, then R3"), so `spec.md` is untouched. R3/R4 remain in tasks.md as reference,
+marked DROPPED — the orchestrator skips them and Concludes after R2.
+
+The fix-reserve has two escape hatches, in priority order: if R1 or R2 fails from a cause that
+is expressible as a new `configs/target/*.yaml` (allowed unattended), author a small fix
+campaign and spend the reserve; if the cause needs an `envs/` code change, **halt for the human**
+(constitution §2) and do not spend. Never manufacture a fix to chase a number — "not
+reproducible" is a real result (constitution §3.5).
+
 ## Ordering
 
 1. **R0/R1-s1 alone first** — do not launch the R1 wave before the cost model is measured on one
    instance (spec: "Do not launch a wave you cannot finish"). After the cost model clears $7,
    launch R1 seeds 2 and 3.
-2. R1 gate (aggregate → reviewer) must pass before R2/R3.
-3. R2 and R3 are independent axes; run in parallel within the concurrency limit when headroom allows.
-4. R4 only if ≥ $4 headroom remains after R2/R3 and R1 needed no retry.
+2. R1 gate (aggregate → reviewer) must pass before R2.
+3. R2 (wind) after R1 passes.
+4. After R2's gate, **Conclude**. R3 and R4 are not launched (reserved).
 
 ## Infra fix applied before this campaign (first real run)
 

@@ -5,6 +5,13 @@ Ordered checklist the orchestrator ticks off. Each launchable run carries the ex
 root with the project venv (`venv/bin/python`). Tick `[x]` only after the run is `evaluated` and
 the rung's gate is decided by the reviewer.
 
+> **SCOPE (human-directed, 2026-08-30): R3 and R4 are DROPPED to reserve budget.**
+> Total vast credit is $17.87. Campaign 1 runs **R1 + R2 only** (~$9), banking ~$8 for a
+> possible autonomous *config-level* fix-campaign if a rung fails. This uses the spec's own
+> budget rule ("Drop R4 first, then R3") — `spec.md` is unchanged. After R2's reviewer gate,
+> **Conclude** (do not launch R3/R4). A config-level failure may spend the reserve on a fix
+> spec; an `envs/`-level cause halts for the human instead.
+
 Common launch flags (every run):
 `--exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000
 --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 --stop-window 5
@@ -82,7 +89,11 @@ venv/bin/python tools/aggregate_seeds.py --campaign 2026-08-chase-hardening --ru
 ```
 - [ ] R2 reviewer verdict `pass`.
 
-## R3 — faster target (config-only). Independent of R2; may run in parallel.
+## R3 — faster target — DROPPED (reserved for fix-campaign). Do not launch.
+
+_Kept below for reference only; the orchestrator must skip this rung and Conclude after R2._
+
+## R3 (reference, not launched) — faster target (config-only).
 
 - [ ] `R3-chase_easy2_fast-s1`
 ```
@@ -109,7 +120,11 @@ venv/bin/python tools/aggregate_seeds.py --campaign 2026-08-chase-hardening --ru
 ```
 - [ ] R3 reviewer verdict `pass`.
 
-## R4 — headline config (opportunistic, needs ≥ $4 headroom, R1 needed no retry).
+## R4 — headline config — DROPPED (reserved for fix-campaign). Do not launch.
+
+_Kept below for reference only; the orchestrator must skip this rung and Conclude after R2._
+
+## R4 (reference, not launched) — headline config (opportunistic).
 
 - [ ] `R4-chase-s1`
 ```

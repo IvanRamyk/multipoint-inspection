@@ -27,3 +27,5 @@ Append-only lab notebook. The final report goes at the end.
   override risks a Hydra conflict. `fabric.accelerator=gpu fabric.precision=16-mixed` come from
   `deploy/train_remote.sh`. Confirmed a `--dry-run` launch computes a clean config hash and that
   the three R1 seeds share one hash (seed stripped) so they aggregate together.
+[wake 1] read: no current.json, no budget.json yet, vast clean (0 instances), guard up (credit $17.87) → decided first-wake init: created current.json phase=starting rung=R1, launch deferred until guard writes budget.json → dispatched none
+[scope 2026-08-30] human-directed: drop R3+R4, run R1+R2 only (~$9), reserve ~$8 of $17.87 credit for a possible config-level fix-campaign. spec.md untouched (spec own rule "drop R4 then R3"). tasks.md/plan.md/current.json updated. Conclude after R2 gate; config-level failure may spend reserve, envs/-level failure halts for human.
