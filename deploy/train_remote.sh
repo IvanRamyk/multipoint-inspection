@@ -102,8 +102,13 @@ FULL_CMD="${PYTHON} scripts/train_dreamer.py fabric.accelerator=gpu fabric.preci
 # shellcheck disable=SC2029
 ssh ${SSH_OPTS} "${REMOTE}" "
   cd ${REMOTE_DIR}
-  # Kill any existing session to avoid stale state
+  # Kill any existing session to avoid stale state.
   tmux kill-session -t train 2>/dev/null || true
+  # IMPORTANT: sheeprl's async vector-env workers get orphaned (reparented to
+  # init) when the tmux session is killed and keep running, stealing CPU/GPU
+  # from the new run. Explicitly kill every lingering sheeprl process first.
+  pkill -9 -f 'python -m sheeprl' 2>/dev/null || true
+  sleep 3
   # Start new detached session, log stdout+stderr to a file
   tmux new-session -d -s train -x 220 -y 50
   tmux send-keys -t train 'cd ${REMOTE_DIR} && ${FULL_CMD} 2>&1 | tee train.log' Enter

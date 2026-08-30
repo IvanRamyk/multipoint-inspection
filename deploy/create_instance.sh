@@ -63,6 +63,15 @@ for i in $(seq 1 40); do
     # Parse ssh://root@1.2.3.4:12345
     HOST=$(echo "$SSH_URL" | sed 's|ssh://[^@]*@||' | cut -d: -f1)
     PORT=$(echo "$SSH_URL" | sed 's|ssh://[^@]*@||' | cut -d: -f2)
+    # An ssh-url exists as soon as the contract is assigned, but sshd is not up
+    # until the container image finishes pulling. Verify a real connection
+    # before declaring ready, else the caller's rsync gets "connection refused".
+    SSH_KEY="${SSH_KEY:-${HOME}/.ssh/hetzner_agents}"
+    if ! ssh -i "$SSH_KEY" -p "$PORT" -o StrictHostKeyChecking=no -o LogLevel=ERROR \
+         -o ConnectTimeout=8 -o BatchMode=yes "root@${HOST}" 'true' 2>/dev/null; then
+      echo "  (${i}/40) ssh-url up but sshd not accepting yet (image still pulling), waiting 10s..."
+      continue
+    fi
     echo ""
     echo "==> Instance is ready!"
     echo "    Instance ID : ${INSTANCE_ID}"

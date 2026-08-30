@@ -19,20 +19,20 @@ def main() -> None:
     print("DreamerV3 Smoke Test")
     print("=" * 60)
 
-    # Step 1: Check env registration.
+    # Step 1: Check env registration for both tasks.
     print("\n[1/4] Checking environment registration...")
     import envs  # noqa: F401 — triggers registration
     import gymnasium as gym
     import numpy as np
 
-    env = gym.make("DroneInspection-sheeprl-v0")
-    obs, info = env.reset()
-    assert "depth" in obs, "Missing 'depth' in observations"
-    assert "state" in obs, "Missing 'state' in observations"
-    assert obs["depth"].dtype == np.uint8, f"Depth should be uint8, got {obs['depth'].dtype}"
-    print(f"  depth shape: {obs['depth'].shape}, dtype: {obs['depth'].dtype}")
-    print(f"  state shape: {obs['state'].shape}, dtype: {obs['state'].dtype}")
-    env.close()
+    for env_id in ("DroneInspection-sheeprl-v0", "DroneTarget-sheeprl-v0"):
+        env = gym.make(env_id)
+        obs, info = env.reset()
+        assert "depth" in obs, f"{env_id}: missing 'depth' in observations"
+        assert "state" in obs, f"{env_id}: missing 'state' in observations"
+        assert obs["depth"].dtype == np.uint8, f"{env_id}: depth should be uint8, got {obs['depth'].dtype}"
+        print(f"  {env_id}: depth {obs['depth'].shape} {obs['depth'].dtype}, state {obs['state'].shape}")
+        env.close()
     print("  PASSED")
 
     # Step 2: Check sheeprl import.
@@ -51,8 +51,9 @@ def main() -> None:
     print(f"  MPS available: {torch.backends.mps.is_available()}")
     print("  PASSED")
 
-    # Step 4: Short training run.
-    print("\n[4/4] Running DreamerV3 for 2000 steps (this may take a few minutes on CPU)...")
+    # Step 4: Short training run on the moving-target task.
+    exp = os.environ.get("SMOKE_EXP", "drone_target")
+    print(f"\n[4/4] Running DreamerV3 (exp={exp}) for 600 steps (a few minutes on CPU)...")
 
     configs_path = project_root / "configs" / "sheeprl"
     env_vars = os.environ.copy()
@@ -65,17 +66,17 @@ def main() -> None:
             sys.executable,
             "-m",
             "sheeprl",
-            "exp=drone_inspection",
-            "algo.total_steps=2000",
-            "algo.learning_starts=200",
+            f"exp={exp}",
+            "algo.total_steps=600",
+            "algo.learning_starts=100",
             "algo.per_rank_batch_size=4",
             "algo.per_rank_sequence_length=8",
-            "metric.log_every=500",
+            "metric.log_every=200",
             "checkpoint.every=100000",
         ],
         capture_output=True,
         text=True,
-        timeout=600,
+        timeout=900,
         env=env_vars,
     )
 

@@ -8,3 +8,10 @@
 /.idea
 CLAUDE.md
 .env
+__pycache__/
+*.pyc
+*.egg-info/
+.DS_Store
+
+# Accidental literal "~" directory from an unquoted shell expansion.
+/~/

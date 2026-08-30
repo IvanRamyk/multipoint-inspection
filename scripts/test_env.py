@@ -11,8 +11,8 @@ import numpy as np
 # Add project root to path.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from envs.config import EnvConfig
-from envs.drone_inspection_env import DroneInspectionEnv
+from envs.core.config import EnvConfig
+from envs.tasks.drone_inspection_env import DroneInspectionEnv
 from eval.route_visualizer import plot_route_3d, plot_route_topdown
 
 

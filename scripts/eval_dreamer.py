@@ -22,8 +22,8 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
 import envs  # noqa: F401 — triggers gymnasium registration
-from envs.config import EnvConfig
-from envs.drone_inspection_env import DroneInspectionEnv
+from envs.core.config import EnvConfig
+from envs.tasks.drone_inspection_env import DroneInspectionEnv
 from envs.sheeprl_wrapper import SheepRLCompatWrapper
 from eval.route_visualizer import plot_route_3d, plot_route_topdown
 
@@ -68,7 +68,7 @@ def main() -> None:
     if args.config:
         env_config = EnvConfig.from_yaml(args.config)
     else:
-        env_config = EnvConfig.from_yaml("configs/easy.yaml")
+        env_config = EnvConfig.from_yaml("configs/inspection/easy.yaml")
 
     if args.record:
         try:

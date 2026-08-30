@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 # Pull training artifacts from a vast.ai instance to your local machine.
-# Fetches: checkpoints, TensorBoard events, route plots, and train.log.
+# Fetches the whole logs/ tree — per-run subfolders containing checkpoints,
+# TensorBoard events, the merged config.yaml, AND the training videos
+# (<run>/version_0/videos/) — plus results/ and train.log.
+#
+# Each run lives in its own timestamped folder:
+#   logs/runs/dreamer_v3/<Env-id>/<timestamp>_..._<seed>/version_0/
+#     checkpoint/ckpt_*.ckpt      model checkpoints
+#     events.out.tfevents.*       TensorBoard scalars
+#     config.yaml                 full merged Hydra config for that run
+#     videos/ep<NNNNNN>_*.mp4      per-episode training videos (if recording on)
 #
 # Usage:
 #   bash deploy/fetch_results.sh <HOST> <PORT>
@@ -33,10 +42,10 @@ scp ${SSH_OPTS} "${REMOTE}:${REMOTE_DIR}/train.log" ./train_remote.log 2>/dev/nu
   || echo "  (no train.log yet)"
 
 echo ""
-echo "Done. Local paths:"
-echo "  Checkpoints: logs/runs/dreamer_v3/DroneInspection-sheeprl-v0/*/version_0/checkpoint/"
-echo "  TensorBoard: ./venv/bin/tensorboard --logdir logs/runs/dreamer_v3 --port 6006"
+echo "Done. Each run is under logs/runs/dreamer_v3/<Env-id>/<timestamp>_..._<seed>/version_0/"
+echo "  Checkpoints:      .../version_0/checkpoint/ckpt_*.ckpt"
+echo "  Training videos:  .../version_0/videos/ep*.mp4"
+echo "  TensorBoard:      ./venv/bin/tensorboard --logdir logs/runs/dreamer_v3 --port 6006"
 echo ""
-echo "To eval the latest fetched checkpoint:"
-echo "  CKPT=\$(ls -td logs/runs/dreamer_v3/DroneInspection-sheeprl-v0/*/version_0/checkpoint 2>/dev/null | head -1 | xargs -I{} ls -t {}/ckpt_*.ckpt 2>/dev/null | head -1)"
-echo "  ./venv/bin/python scripts/eval_dreamer.py \"\$CKPT\" --config configs/easy.yaml --episodes 5 --render --greedy"
+echo "Newest run's training videos:"
+echo "  ls -t logs/runs/dreamer_v3/*/*/version_0/videos/*.mp4 2>/dev/null | head"
