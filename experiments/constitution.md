@@ -56,29 +56,42 @@ are the ones that bite an automated loop specifically.
    the worst seed, via `tools/aggregate_seeds.py`. A rung where the mean passes
    but one seed collapsed has not passed.
 3. **Acceptance criteria are precommitted.** They live in the campaign's
-   `spec.md`, written before the first launch. If a result misses the bar, the
-   result is a miss — you may not adjust the bar. Only a human may amend a spec,
-   and only between sessions.
-4. **A negative result is a real result.** "Not reproducible across seeds" is a
+   `spec.md`, written before the first launch. **You may never edit a criterion** —
+   not to loosen it, not to "correct" it. Only a human may amend a spec, and only
+   between sessions.
+4. **You may override a failed gate twice per campaign, on the record.** Thresholds
+   are written before any run exists, so some are guesses, and discarding a good
+   result over a threshold that was slightly wrong is real waste. Use
+   `tools/request_override.py`. It does not change the bar: the gate keeps reporting
+   FAIL, the spec stays as written, and the override is logged against the failure
+   with the measured value, the threshold, your argument, and the blind reviewer's
+   own verdict. It leads the final report so the human can disagree in the morning.
+   Two things it will refuse, and you must not route around either: **integrity
+   failures** — an altered checksum, an eval against a different config, a synthetic
+   eval, too few seeds — because those mean the number is untrustworthy rather than
+   borderline, and **a spent budget**, because two missed gates in one campaign means
+   the thresholds or the task are wrong, which is the human's call. Never override
+   because a lot of compute went into a result; sunk cost is not evidence.
+5. **A negative result is a real result.** "Not reproducible across seeds" is a
    valid, publishable campaign outcome. Report it plainly instead of grinding.
-5. **Verify behaviour, not just the scalar.** A success rate says the target was
+6. **Verify behaviour, not just the scalar.** A success rate says the target was
    reached; it does not say the policy pursued anything. Every eval carries a
    `behaviour` block, and the campaign spec sets hard criteria on it —
    `mean_pursuit_alignment` above all, plus initial separation and steps to
    interception. A policy that holds position until the target arrives, or that is
    handed catches by the spawn geometry, **fails** even when its success rate beats
    a genuine pursuer's. Reward can be gamed; geometry is harder to fake.
-6. **Numbers veto, eyes advise.** The behaviour criteria in `spec.md` are hard
+7. **Numbers veto, eyes advise.** The behaviour criteria in `spec.md` are hard
    gates. The reviewer's visual read of the contact sheet may only raise
    `suspicious`, which halts for a human — never `fail` on its own. The sheet is a
    reconstruction from position tracks, and taste is not a precommitted criterion.
-7. **Establish the baselines before training a rung.** `tools/run_baselines.py`
+8. **Establish the baselines before training a rung.** `tools/run_baselines.py`
    says whether scripted pursuit and random already solve the config. A rung random
    can solve proves nothing; a rung scripted pursuit cannot solve is not winnable by
    learning either. Both are far cheaper to discover here than after three failed
    runs, and scripted pursuit's alignment is the reference for what "looks like
    pursuit" means on that config.
-8. **If a rung needs hyperparameter tuning to learn at all, suspect the task.**
+9. **If a rung needs hyperparameter tuning to learn at all, suspect the task.**
    DreamerV3's whole claim is one fixed config across 150+ tasks. Journal the
    observation and stop that axis rather than tuning your way to a number.
 

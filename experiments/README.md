@@ -118,6 +118,29 @@ not a precommitted criterion. **Numbers veto, eyes advise.**
 When a behaviour gate fails, the fix is usually an env parameter rather than more training. The
 symptom-to-knob table lives in `.claude/agents/env-engineer.md`.
 
+## When the gate is wrong
+
+Thresholds are written before a single run exists, so some of them are guesses, and discarding a
+genuinely good result over a threshold that was slightly off is real waste. The orchestrator can
+continue past a failed gate **twice per campaign**, via `tools/request_override.py`.
+
+It is not a way to lower the bar. The spec is never edited, `aggregate_seeds.py` keeps reporting
+FAIL, and the override is written as an exception *against* that failure — carrying the measured
+value, the threshold, the relative shortfall, the agent's argument, and the blind reviewer's own
+verdict. It leads the final report, so a reader who stops after the first paragraph still knows
+which results rest on a judgment call.
+
+Two refusals are absolute. **Integrity failures** cannot be overridden by any argument: a
+checksum mismatch, an eval against a different config, a synthetic eval, or fewer seeds than the
+minimum mean the number is untrustworthy rather than borderline, so there is nothing to exercise
+judgment about. And a **spent budget** ends it: two missed gates in one campaign means either the
+thresholds or the task are wrong, and both are the human's call.
+
+```
+tools/request_override.py --campaign <c> --list     # what's left
+bash experiments/verify_overrides.sh                # the limits still bind
+```
+
 ## How the numbers stay honest
 
 - **Three seeds minimum**, reported as mean ± standard error *plus the worst seed*. A rung
