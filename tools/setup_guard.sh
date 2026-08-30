@@ -93,8 +93,28 @@ echo "==> Copying the guard out of the repo to ${GUARD_HOME}"
 cp "${REPO_ROOT}/tools/budget_guard.py" "${GUARD_HOME}/budget_guard.py"
 chmod 500 "${GUARD_HOME}/budget_guard.py"
 
-echo "==> Snapshotting checksums of tools/ and deploy/"
-( cd "$REPO_ROOT" && shasum -a 256 tools/*.py tools/*.sh deploy/*.sh > tools/checksums.sha256 ) || true
+echo "==> Snapshotting checksums of the measurement layer"
+# Covers everything whose change could alter a reported number: the tools, the
+# deploy scripts, the eval/plot scripts that produce the success rate, the env
+# code that defines the task, and the rung configs being graded against. Omitting
+# scripts/ and envs/ would leave the obvious hole — the tools are honest but the
+# thing they measure was quietly edited.
+(
+  cd "$REPO_ROOT" && shasum -a 256 \
+    tools/*.py tools/*.sh \
+    deploy/*.sh \
+    scripts/*.py \
+    eval/*.py \
+    envs/*.py envs/*/*.py \
+    configs/target/*.yaml \
+    experiments/constitution.md \
+    experiments/campaigns/*/spec.md \
+    > tools/checksums.sha256
+) || true
+# The constitution and the campaign specs are in the manifest deliberately. They
+# hold the rules and the precommitted acceptance criteria, so an agent quietly
+# relaxing either is the single highest-leverage way to fake a passing result —
+# and unlike the code, nothing else would notice.
 # The manifest must not list itself, or verifying it becomes self-referential.
 ( cd "$REPO_ROOT" && grep -v 'tools/checksums.sha256' tools/checksums.sha256 > tools/.cks.tmp \
     && mv tools/.cks.tmp tools/checksums.sha256 )

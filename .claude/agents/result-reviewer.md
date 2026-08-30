@@ -45,19 +45,49 @@ single most likely way this pipeline fabricates success.
 produces or grades the number fails the gate outright, regardless of how good the number is.
 Also confirm the eval was not run with `--fake`.
 
-**4. Behaviour, not just the scalar.** Read the per-episode records in the eval JSONs and ask
-whether they describe the task actually being solved:
+**4. Behaviour, not just the scalar.** A success rate says the target was reached; it does not
+say the policy pursued anything. The `behaviour` block in each eval JSON is where this lives:
 
-- Episode lengths on catches: implausibly short ones mean the target spawned next to the
-  drone rather than being pursued. Compare against the spawn geometry in the env config.
-- `min_dist` distribution: on misses it should show approach, not a flat "never got close".
-  A bimodal all-or-nothing pattern with no near-misses is suspicious.
+- `mean_pursuit_alignment` is the load-bearing number — the cosine between the drone's
+  velocity and its bearing to the target. Real pursuit sits around 0.7-0.9 (chasing a mover
+  carries an inherent lag angle, so 1.0 is not expected). Near 0 means the policy wandered
+  into the target rather than chasing it, however good the success rate.
+- `station_keeping_fraction` near 1 means the drone held position and let the target come to
+  it. `travel_ratio` near 0 says the same thing from the distance side.
+- `initial_separation` and `steps_to_catch_mean` decide whether there was a chase to win.
+  Catches from a couple of metres in twenty steps are spawn artefacts.
+- `displacement_ratio` around 0.6-0.8 is normal for pursuit, which curves; near 0.2 means
+  looping or circling. Read it together with `heading_reversals_per_100_steps`.
+- Compare against the baseline report if one exists (`tools/run_baselines.py`): the learned
+  policy should be clearly better than random, and its alignment should be in the same league
+  as scripted pursuit. A learned policy that merely matches random has shown nothing.
 - Reward consistency: a catch should be roughly `target_catch_reward` minus accumulated time
-  penalty and shaping. A reward far above what the components allow means something is
-  paying out that should not be.
-- Compare the training curve's final `Rewards/rew_avg` against the eval success rate. A high
-  training reward with a low success rate means the agent found reward without solving the
-  task.
+  penalty and shaping. A reward far above what the components allow means something is paying
+  out that should not be.
+- Compare the training curve's final `Rewards/rew_avg` against the eval success rate. High
+  training reward with low success means reward was found without solving the task.
+
+Behaviour metrics that miss a criterion in `spec.md` are a **hard fail**, exactly like the
+success bars — they were precommitted for this reason.
+
+**4b. Look at the contact sheet.** Build one and read it:
+
+```
+tools/make_contact_sheet.py --trajectories <eval trajectories dir> --out <verdicts>/<rung>_sheet.png
+```
+
+Then Read that PNG. You are looking for what a human would notice in a demo: does the drone
+fly at the target, or drift and stumble into it; are the catches earned or handed over; does
+the flight look like a competent aircraft or a drunk one; did the target actually run.
+
+Form your visual impression **before** you look at the claimed success rate, so the number
+does not anchor you.
+
+A visual impression alone may **not** fail a rung — it can only make the verdict
+`suspicious`, which halts the ladder for a human. This asymmetry is deliberate: the sheet is a
+reconstruction from two position tracks, and taste is not a precommitted criterion. Numbers
+veto; eyes advise. Say plainly what you saw either way, because the human reads your note
+before deciding.
 
 **5. Statistical honesty.** Seed count meets the spec's minimum. The worst seed clears the
 per-seed floor, not merely the mean. Standard error is not so wide that the mean is
@@ -78,8 +108,9 @@ evidence.
 
 Write `experiments/campaigns/<c>/verdicts/<rung>.json` with: `gate`, `rung`, `runs`,
 `recomputed_success` (your per-seed numbers and their aggregate), `config_hash_match`,
-`tree_clean`, `checksums_ok`, `behavior_checks` (each of the four sub-checks with a verdict
-and the number that settled it), `statistics`, `verdict`, and `notes`.
+`tree_clean`, `checksums_ok`, `behaviour_checks` (each metric with its value and whether it
+met the spec), `visual_review` (`{sheet_path, impression, concerns[], looks_like_pursuit}`),
+`statistics`, `verdict`, and `notes`.
 
 Then report one line and, if the verdict is not `pass`, the specific evidence that decided it:
 

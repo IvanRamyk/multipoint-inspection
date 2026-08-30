@@ -27,6 +27,40 @@ works", say that — a campaign that ends in a clean negative is a success.>
 - Reporting: mean ± standard error over seeds `{1,2,3}`, **plus the worst seed**.
   No cherry-picking, no post-hoc threshold changes.
 
+## Behaviour criteria (apply to every rung)
+
+A success rate says the target was reached. It does not say the policy pursued
+anything — a drone that holds position until the target flies into its catch
+radius scores the same as one that runs it down, and catches handed over by the
+spawn geometry score higher than either. These are hard gates, checked by
+`tools/aggregate_seeds.py` alongside the success bars, and they are precommitted
+here for the same reason: a number produced by the wrong behaviour is not a result.
+
+```
+--min-alignment <0.45>            mean cosine(velocity, bearing to target).
+                                  Real pursuit runs 0.7-0.9; near 0 is wandering.
+--min-initial-separation <5.0>    metres. Rejects spawn-artefact catches.
+--min-catch-steps <40>            mean steps to interception. A catch in 20 was not earned.
+--max-idle-fraction <0.5>
+--min-separation-closed <0.5>     fraction of the starting gap the policy closed itself.
+```
+
+Set these from the baseline report, not from taste: scripted pursuit's alignment on
+this config is the reference for what "looks like pursuit" means here.
+
+## Baselines (run before the first training launch)
+
+```
+tools/run_baselines.py --env-config <config> --task <task> --episodes 20 --json <report>
+```
+
+A `flagged` verdict means the rung is trivial (scripted pursuit or even random
+already succeeds) or unwinnable (scripted pursuit cannot). Either way, fix the
+config before spending on GPU. Record here what the baselines measured:
+
+- random: `<N>%` — the floor a learned policy must clearly beat to mean anything.
+- scripted pursuit: `<N>%`, alignment `<N>` — the reference for behaviour.
+
 ## Rungs
 
 Each rung is one experiment cell (one env config) evaluated over several seeds.

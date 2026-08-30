@@ -21,7 +21,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import _state as st  # noqa: E402
+from eval.behaviour_metrics import aggregate as aggregate_behaviour  # noqa: E402
 
 
 def newest_checkpoint(run_dir: Path) -> Path | None:
@@ -56,18 +59,58 @@ def resolve_run_dir(rec: dict) -> Path:
 
 
 def fake_eval(rec: dict, args: argparse.Namespace) -> dict:
-    """Synthetic episodes for pipeline verification. Never touches torch."""
+    """Synthetic episodes for pipeline verification. Never touches torch.
+
+    ``--fake-behaviour`` picks which kind of policy to imitate, so the behaviour
+    gate can be exercised without training anything: ``pursuit`` looks like a real
+    chase, ``hover`` looks like a policy that waits for the target to arrive, and
+    ``freebie`` looks like catches handed over by the spawn geometry.
+    """
     rng = random.Random(f"{rec['run_id']}:{args.seed}")
+    profiles = {
+        "pursuit": dict(align=(0.72, 0.92), travel=(0.9, 1.4), station=(0.0, 0.06),
+                        sep=(9.0, 14.0), steps=(90, 260)),
+        "hover": dict(align=(-0.10, 0.18), travel=(0.0, 0.12), station=(0.85, 1.0),
+                      sep=(6.0, 11.0), steps=(180, 480)),
+        "freebie": dict(align=(0.85, 1.0), travel=(0.6, 1.0), station=(0.0, 0.05),
+                        sep=(1.0, 2.4), steps=(8, 30)),
+    }
+    p = profiles[args.fake_behaviour]
+
+    def between(lo_hi):
+        return rng.uniform(*lo_hi)
+
     results = []
     for i in range(args.episodes):
         caught = rng.random() < args.fake_success_rate
+        steps = int(between(p["steps"])) if caught else 600
+        sep0 = between(p["sep"])
         results.append({
             "episode": i + 1,
             "seed": args.seed + i,
             "caught": caught,
-            "steps": rng.randint(80, 240) if caught else 600,
+            "steps": steps,
             "min_dist": round(rng.uniform(0.4, 1.8) if caught else rng.uniform(3.0, 14.0), 3),
             "reward": round(rng.uniform(35.0, 60.0) if caught else rng.uniform(-25.0, -2.0), 3),
+            "behaviour": {
+                "steps": steps,
+                "caught": caught,
+                "initial_separation": round(sep0, 3),
+                "min_separation": round(rng.uniform(0.3, 1.6) if caught else rng.uniform(2.0, 9.0), 3),
+                "separation_closed_frac": round(between((0.8, 1.0)) if caught else between((0.1, 0.6)), 3),
+                "mean_pursuit_alignment": round(between(p["align"]), 3),
+                "early_pursuit_alignment": round(between(p["align"]), 3),
+                "travel_ratio": round(between(p["travel"]), 3),
+                "displacement_ratio": round(between((0.55, 0.8)), 3),
+                "station_keeping_fraction": round(between(p["station"]), 3),
+                "idle_fraction": round(between((0.0, 0.1)), 3),
+                "path_efficiency": round(between((0.5, 0.9)), 3),
+                "closing_fraction": round(between((0.5, 0.8)), 3),
+                "heading_reversals_per_100_steps": round(between((2.0, 12.0)), 2),
+                "altitude_std": round(between((0.2, 1.2)), 3),
+                "steps_to_catch": steps if caught else None,
+                "time_to_catch_s": round(steps / 30.0, 3) if caught else None,
+            },
         })
     caught_flags = [r["caught"] for r in results]
     return {
@@ -84,8 +127,10 @@ def fake_eval(rec: dict, args: argparse.Namespace) -> dict:
         "mean_reward": sum(r["reward"] for r in results) / len(results),
         "mean_steps": sum(r["steps"] for r in results) / len(results),
         "mean_min_dist": sum(r["min_dist"] for r in results) / len(results),
+        "behaviour": aggregate_behaviour([r["behaviour"] for r in results]),
         "results": results,
         "fake": True,
+        "fake_behaviour": args.fake_behaviour,
     }
 
 
@@ -107,6 +152,9 @@ def main() -> int:
     ap.add_argument("--fake", action="store_true",
                     help="Synthesise episodes instead of running a policy. Verification only.")
     ap.add_argument("--fake-success-rate", type=float, default=0.7)
+    ap.add_argument("--fake-behaviour", default="pursuit", choices=("pursuit", "hover", "freebie"),
+                    help="Which kind of policy the synthetic behaviour metrics should imitate, "
+                         "so the behaviour gate can be tested without training.")
     args = ap.parse_args()
 
     rec = st.find_run(args.campaign, args.run_id)

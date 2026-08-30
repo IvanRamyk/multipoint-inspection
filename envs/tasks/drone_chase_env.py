@@ -81,6 +81,14 @@ class DroneChaseEnv(gymnasium.Env):
         self._step_count = 0
         self._positions: list[np.ndarray] = []
         self._target_positions: list[np.ndarray] = []
+        # Recorded for post-hoc behaviour analysis only — nothing in the reward,
+        # the observation, or the dynamics reads these, so past results stay
+        # comparable. Velocity lets the analysis ask whether the drone was
+        # actually flying AT the target; orientation exposes attitude wobble that
+        # a position track hides.
+        self._velocities: list[np.ndarray] = []
+        self._orientations: list[np.ndarray] = []
+        self._target_velocities: list[np.ndarray] = []
         self._prev_dist: float | None = None
         self._caught = False
 
@@ -108,6 +116,9 @@ class DroneChaseEnv(gymnasium.Env):
         self._step_count = 0
         self._positions = []
         self._target_positions = []
+        self._velocities = []
+        self._orientations = []
+        self._target_velocities = []
         self._prev_dist = None
         self._caught = False
 
@@ -147,6 +158,9 @@ class DroneChaseEnv(gymnasium.Env):
         target = self.backend.get_target_state()
         self._positions.append(drone.position.copy())
         self._target_positions.append(target.position.copy())
+        self._velocities.append(drone.velocity.copy())
+        self._orientations.append(drone.orientation.copy())
+        self._target_velocities.append(target.velocity.copy())
 
         # Advance the target's plan if it reached its current waypoint.
         self._plan.advance_if_reached(target.position)
@@ -184,6 +198,21 @@ class DroneChaseEnv(gymnasium.Env):
     @property
     def target_positions(self) -> list[np.ndarray]:
         return self._target_positions
+
+    @property
+    def velocities(self) -> list[np.ndarray]:
+        """Drone world-frame velocity per step. Analysis only."""
+        return self._velocities
+
+    @property
+    def orientations(self) -> list[np.ndarray]:
+        """Drone orientation quaternion (x, y, z, w) per step. Analysis only."""
+        return self._orientations
+
+    @property
+    def target_velocities(self) -> list[np.ndarray]:
+        """Target world-frame velocity per step. Analysis only."""
+        return self._target_velocities
 
     # -- Helpers ----------------------------------------------------------
 

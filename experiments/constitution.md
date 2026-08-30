@@ -61,11 +61,24 @@ are the ones that bite an automated loop specifically.
    and only between sessions.
 4. **A negative result is a real result.** "Not reproducible across seeds" is a
    valid, publishable campaign outcome. Report it plainly instead of grinding.
-5. **Verify behaviour, not just the scalar.** Before believing a success rate,
-   check that episode lengths and minimum distances look like pursuit rather than
-   the target spawning next to the drone. Reward can be gamed; geometry is harder
-   to fake.
-6. **If a rung needs hyperparameter tuning to learn at all, suspect the task.**
+5. **Verify behaviour, not just the scalar.** A success rate says the target was
+   reached; it does not say the policy pursued anything. Every eval carries a
+   `behaviour` block, and the campaign spec sets hard criteria on it —
+   `mean_pursuit_alignment` above all, plus initial separation and steps to
+   interception. A policy that holds position until the target arrives, or that is
+   handed catches by the spawn geometry, **fails** even when its success rate beats
+   a genuine pursuer's. Reward can be gamed; geometry is harder to fake.
+6. **Numbers veto, eyes advise.** The behaviour criteria in `spec.md` are hard
+   gates. The reviewer's visual read of the contact sheet may only raise
+   `suspicious`, which halts for a human — never `fail` on its own. The sheet is a
+   reconstruction from position tracks, and taste is not a precommitted criterion.
+7. **Establish the baselines before training a rung.** `tools/run_baselines.py`
+   says whether scripted pursuit and random already solve the config. A rung random
+   can solve proves nothing; a rung scripted pursuit cannot solve is not winnable by
+   learning either. Both are far cheaper to discover here than after three failed
+   runs, and scripted pursuit's alignment is the reference for what "looks like
+   pursuit" means on that config.
+8. **If a rung needs hyperparameter tuning to learn at all, suspect the task.**
    DreamerV3's whole claim is one fixed config across 150+ tasks. Journal the
    observation and stop that axis rather than tuning your way to a number.
 

@@ -79,8 +79,44 @@ Cheapest first. Each level exercises strictly more of the stack.
 | `state/budget.json` | Written only by the guard. Read-only to everything else. |
 | `state/KILLED` | Session over. Launching refuses while it exists. |
 | `tools/` | Deterministic layer. Agents call these; they must not rewrite them. |
+| `eval/behaviour_metrics.py` | Turns trajectories into the pursuit-quality numbers. |
+| `tools/run_baselines.py` | Scripted pursuit / random, plus the trivial-and-unwinnable check. |
+| `tools/make_contact_sheet.py` | Tiles episodes into the one PNG the reviewer looks at. |
 | `.claude/agents/` | The roster: planner, runner, monitor, evaluator, reviewer, env-engineer. |
 | `.claude/commands/loop-experiments.md` | The wake procedure. One decision per wake. |
+
+## How a good number gets rejected
+
+A success rate says the target was reached. It does not say the policy pursued anything, and
+that gap is where a run looks great in a table and disappointing on video. Three layers close it.
+
+**Behaviour metrics (hard gate).** Every eval carries a `behaviour` block computed from the
+recorded trajectories. The load-bearing number is `mean_pursuit_alignment` — the cosine between
+the drone's velocity and its bearing to the target. Real pursuit runs 0.7–0.9; a policy that
+hovers until the target arrives sits near 0 no matter how often it "succeeds".
+`station_keeping_fraction`, `travel_ratio`, `initial_separation` and `steps_to_catch` catch the
+rest. These are precommitted in `spec.md` and enforced by `aggregate_seeds.py`, so:
+
+| behaviour | success rate | verdict |
+|---|---|---|
+| genuine pursuit | 67% | pass |
+| holds position, target flies in | 72% | **fail** — alignment 0.04 |
+| catches handed over at spawn | 98% | **fail** — 1.7 m gap, caught in 19 steps |
+
+**Baselines (before spending).** `tools/run_baselines.py` runs scripted pursuit and random on a
+config. If pursuit already wins almost always, the rung proves nothing; if random wins often, it
+proves less than nothing; if pursuit cannot win at all, no training will. Scripted pursuit's
+alignment is also the reference for what "looks like pursuit" means on that config.
+
+**Contact sheet (advisory).** `tools/make_contact_sheet.py` tiles episode trajectories into one
+PNG, and the reviewer reads it — a single image, a few thousand tokens, no video decoding. It is
+looking for what a human notices in a demo: earned catches, competent flight, a target that
+actually ran. A visual impression may only raise `suspicious`, which halts for a human; it can
+never fail a rung by itself. The sheet is a reconstruction from position tracks, and taste is
+not a precommitted criterion. **Numbers veto, eyes advise.**
+
+When a behaviour gate fails, the fix is usually an env parameter rather than more training. The
+symptom-to-knob table lives in `.claude/agents/env-engineer.md`.
 
 ## How the numbers stay honest
 

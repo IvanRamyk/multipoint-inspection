@@ -48,6 +48,25 @@ def main() -> int:
     ap.add_argument("--min-mean", type=float, default=None, help="Required mean success rate.")
     ap.add_argument("--min-seed", type=float, default=None,
                     help="Required success rate for the WORST seed.")
+    # Behaviour gates. These are hard criteria, precommitted in spec.md alongside
+    # the success bars, because a success rate produced by the wrong behaviour is
+    # not a result. A policy that hovers until the target arrives, or that is
+    # handed catches by the spawn geometry, fails here with a passing mean.
+    ap.add_argument("--min-alignment", type=float, default=None,
+                    help="Required mean pursuit alignment — cosine between the drone's velocity "
+                         "and its bearing to the target. Near 1 is true pursuit; near 0 means the "
+                         "policy wandered into the target rather than chasing it.")
+    ap.add_argument("--min-initial-separation", type=float, default=None,
+                    help="Required mean starting distance to the target, in metres. Rejects rungs "
+                         "whose catches are spawn artefacts.")
+    ap.add_argument("--min-catch-steps", type=int, default=None,
+                    help="Required mean steps to interception. A catch in a handful of steps was "
+                         "not earned.")
+    ap.add_argument("--max-idle-fraction", type=float, default=None,
+                    help="Reject when the drone spends more than this fraction of the episode "
+                         "essentially stationary.")
+    ap.add_argument("--min-separation-closed", type=float, default=None,
+                    help="Required fraction of the initial gap the policy itself closed.")
     ap.add_argument("--out", default=None, help="Output JSON path (default: campaign evals/).")
     args = ap.parse_args()
 
@@ -90,6 +109,7 @@ def main() -> int:
             "eval_seed_base": data.get("eval_seed_base"),
             "mean_min_dist": data.get("mean_min_dist"),
             "mean_steps": data.get("mean_steps"),
+            "behaviour": data.get("behaviour"),
             "eval_path": str(path.relative_to(st.REPO_ROOT)),
         })
 
@@ -108,6 +128,11 @@ def main() -> int:
             "min_seeds": args.min_seeds,
             "min_mean": args.min_mean,
             "min_seed": args.min_seed,
+            "min_alignment": args.min_alignment,
+            "min_initial_separation": args.min_initial_separation,
+            "min_catch_steps": args.min_catch_steps,
+            "max_idle_fraction": args.max_idle_fraction,
+            "min_separation_closed": args.min_separation_closed,
         },
         "aggregated_at": st.utcnow(),
     }
@@ -137,6 +162,53 @@ def main() -> int:
                 f"worst seed {worst['run_id']} at {worst['success_rate']:.3f} is below the "
                 f"per-seed floor {args.min_seed:.3f}"
             )
+
+    # Behaviour gates, checked on the mean across seeds of each metric. A missing
+    # metric with a criterion set is a failure, not a pass: an eval produced before
+    # behaviour recording existed cannot be silently waved through a behaviour gate.
+    behaviours = [s["behaviour"] for s in per_seed if s.get("behaviour")]
+    if behaviours:
+        keys = [
+            "mean_pursuit_alignment", "initial_separation", "steps_to_catch_mean",
+            "idle_fraction", "separation_closed_frac", "path_efficiency",
+            "early_pursuit_alignment", "fastest_catch_steps",
+        ]
+        summary = {}
+        for key in keys:
+            vals = [b[key] for b in behaviours if b.get(key) is not None]
+            summary[key] = round(sum(vals) / len(vals), 4) if vals else None
+        report["behaviour"] = summary
+
+        def gate(metric: str, threshold, comparison: str, label: str) -> None:
+            if threshold is None:
+                return
+            value = summary.get(metric)
+            if value is None:
+                failures.append(
+                    f"{label} could not be measured, but a criterion was set — re-evaluate with "
+                    "behaviour recording enabled rather than passing the gate blind"
+                )
+                return
+            bad = value < threshold if comparison == "min" else value > threshold
+            if bad:
+                word = "below" if comparison == "min" else "above"
+                failures.append(f"{label} {value} is {word} the required {threshold}")
+
+        gate("mean_pursuit_alignment", args.min_alignment, "min",
+             "pursuit alignment (cosine of velocity against bearing to target)")
+        gate("initial_separation", args.min_initial_separation, "min",
+             "mean initial separation")
+        gate("steps_to_catch_mean", args.min_catch_steps, "min", "mean steps to interception")
+        gate("idle_fraction", args.max_idle_fraction, "max", "idle fraction")
+        gate("separation_closed_frac", args.min_separation_closed, "min",
+             "fraction of the initial gap closed by the policy")
+    elif any(v is not None for v in (
+            args.min_alignment, args.min_initial_separation, args.min_catch_steps,
+            args.max_idle_fraction, args.min_separation_closed)):
+        failures.append(
+            "behaviour criteria were set but no eval carries behaviour metrics — re-run the "
+            "evaluations so the gate has something to check"
+        )
 
     report["pass"] = not failures
     report["failures"] = failures

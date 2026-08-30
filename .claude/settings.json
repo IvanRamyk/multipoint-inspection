@@ -8,27 +8,38 @@
     "silent charge, and that tampering becomes deliberate rather than accidental."
   ],
   "permissions": {
+    "$comment_deny": [
+      "Only the guard's own output files are hard-denied. The guard is a separate OS",
+      "process and does not go through Claude permissions, so denying these costs nothing",
+      "legitimate and removes any path to forging a budget snapshot or clearing the kill",
+      "switch from inside a session."
+    ],
     "deny": [
-      "Edit(./experiments/constitution.md)",
-      "Write(./experiments/constitution.md)",
       "Edit(./experiments/state/budget.json)",
       "Write(./experiments/state/budget.json)",
       "Edit(./experiments/state/KILLED)",
       "Write(./experiments/state/KILLED)"
     ],
     "$comment_ask": [
-      "tools/ and deploy/ are 'ask' rather than 'deny' on purpose. 'deny' has no appeal,",
-      "which would stop the human from maintaining their own tooling in an interactive",
-      "session. In an UNATTENDED session there is nobody to answer the prompt, so an ask is",
-      "effectively a block — the same protection where it matters. And a change that does get",
-      "approved is still caught at the next gate, because the reviewer verifies",
-      "tools/checksums.sha256 and the git state of tools/ and deploy/ before any rung passes."
+      "Everything else that must not drift is 'ask' rather than 'deny', including the",
+      "constitution and the campaign specs. 'deny' has no appeal, which would stop the human",
+      "maintaining their own tooling and rules — and a rulebook that cannot be edited goes",
+      "stale, which is its own failure. In an UNATTENDED session there is nobody to answer",
+      "the prompt, so an ask is effectively a block, which is where the protection matters.",
+      "And a change that does get approved is still caught at the next gate: the reviewer",
+      "verifies tools/checksums.sha256, which covers tools/, deploy/, scripts/, eval/, envs/,",
+      "configs/target/, the constitution AND every campaign spec. Detected-and-appealable",
+      "beats blocked-and-invisible."
     ],
     "ask": [
       "Edit(./tools/**)",
       "Write(./tools/**)",
       "Edit(./deploy/**)",
       "Write(./deploy/**)",
+      "Edit(./experiments/constitution.md)",
+      "Write(./experiments/constitution.md)",
+      "Edit(./experiments/campaigns/*/spec.md)",
+      "Write(./experiments/campaigns/*/spec.md)",
       "Bash(git push:*)",
       "Edit(./envs/**)",
       "Write(./envs/**)",

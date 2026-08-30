@@ -38,6 +38,8 @@ from envs.core.config import EnvConfig
 from envs.tasks.drone_target_env import DroneTargetEnv
 from envs.tasks.drone_chase_env import DroneChaseEnv
 from envs.sheeprl_wrapper import SheepRLCompatWrapper
+from eval.behaviour_metrics import aggregate as aggregate_behaviour
+from eval.behaviour_metrics import episode_metrics
 from eval.target_visualizer import animate_target_episode, animate_target_episode_3d, plot_target_episode
 
 # Task registry: name -> (env class, default config).
@@ -74,6 +76,9 @@ def main() -> None:
     parser.add_argument("--json", type=str, default=None,
                         help="Write per-episode results and the aggregate success rate to this "
                              "JSON path. This is the machine-readable acceptance-gate output.")
+    parser.add_argument("--trajectories", type=str, default=None,
+                        help="Directory to save per-episode trajectory .npz files. Needed to "
+                             "build a contact sheet later without re-running the policy.")
     parser.add_argument("--no-plots", action="store_true",
                         help="Skip all plotting. Use for automated evaluation where only the "
                              "numbers matter — matplotlib rendering dominates the runtime.")
@@ -150,6 +155,12 @@ def main() -> None:
         target = np.array(raw_env.target_positions)
         caught = bool(info["is_success"])
         min_dist = float(np.min(np.linalg.norm(drone - target, axis=1)))
+        behaviour = episode_metrics(
+            drone, target, caught=caught, dt=1.0 / env_config.agent_hz,
+            reach_distance=env_config.target_reach_distance,
+            dome_size=env_config.flight_dome_size,
+            velocities=np.array(raw_env.velocities) if getattr(raw_env, "velocities", None) else None,
+        )
         results.append({
             "episode": ep + 1,
             "seed": args.seed + ep,
@@ -157,7 +168,18 @@ def main() -> None:
             "steps": len(drone),
             "min_dist": min_dist,
             "reward": float(total_reward),
+            "behaviour": behaviour,
         })
+        if args.trajectories:
+            traj_dir = Path(args.trajectories)
+            traj_dir.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(
+                traj_dir / f"{step_tag}_ep{ep + 1}.npz",
+                drone=drone, target=target, caught=caught,
+                reach_distance=env_config.target_reach_distance,
+                dome_size=env_config.flight_dome_size,
+                dt=1.0 / env_config.agent_hz,
+            )
         status = "CAUGHT" if caught else "missed"
         print(f"Episode {ep + 1}: reward={total_reward:7.2f}  steps={len(drone):4d}  "
               f"min_dist={min_dist:.2f}m  {status}")
@@ -210,6 +232,9 @@ def main() -> None:
             "mean_reward": float(np.mean([r["reward"] for r in results])),
             "mean_steps": float(np.mean([r["steps"] for r in results])),
             "mean_min_dist": float(np.mean([r["min_dist"] for r in results])),
+            # Aggregated behaviour, so a gate can ask whether this success rate
+            # came from pursuit or from luck without reading every episode.
+            "behaviour": aggregate_behaviour([r["behaviour"] for r in results]),
             "results": results,
         }
         json_path = Path(args.json)
