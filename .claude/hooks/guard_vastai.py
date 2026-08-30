@@ -23,8 +23,25 @@ SANCTIONED = re.compile(r"tools/(?:launch_run\.py|reap_instances\.sh|setup_guard
 SPENDING = re.compile(r"vastai\s+(?:create|destroy|copy|execute)")
 REDIRECT_INTO_PROTECTED = re.compile(r">>?\s*['\"]?" + PROTECTED)
 REDIRECT_INTO_STATE = re.compile(r">>?\s*['\"]?" + STATE_FILES)
-MUTATORS = re.compile(r"\b(?:sed\s+-i|tee|mv|cp|rm|truncate|install|dd|ln)\b")
+# Split by where the danger is. An in-place editor or deleter naming a protected
+# path anywhere in the segment is a write; a copier is only a write when the
+# protected path is its destination, and `cp tools/x /tmp/backup` is a harmless
+# read that must not be blocked — a hook that cries wolf gets ignored.
+DESTRUCTIVE = re.compile(r"\b(?:sed\s+-i|tee|rm|truncate|dd)\b")
+COPIERS = re.compile(r"\b(?:mv|cp|install|ln|rsync)\b")
 CHMOD = re.compile(r"\bchmod\b")
+
+
+def destination_matches(segment: str, pattern: str) -> bool:
+    """True when a copy/move command's final argument matches ``pattern``.
+
+    Only the last non-flag token is considered, because that is the destination
+    for every command in COPIERS. Sources are reads and are none of our business.
+    """
+    tokens = [t.strip("'\"") for t in segment.split() if not t.startswith("-")]
+    if len(tokens) < 3:  # command + source + destination at minimum
+        return False
+    return re.match(pattern, tokens[-1]) is not None
 
 
 def block(message: str) -> None:
@@ -60,7 +77,12 @@ def main() -> int:
             )
 
         touches_protected = re.search(PROTECTED, segment) is not None
-        if REDIRECT_INTO_PROTECTED.search(segment) or (touches_protected and MUTATORS.search(segment)):
+        writes_protected = (
+            REDIRECT_INTO_PROTECTED.search(segment) is not None
+            or (touches_protected and DESTRUCTIVE.search(segment) is not None)
+            or (COPIERS.search(segment) is not None and destination_matches(segment, PROTECTED))
+        )
+        if writes_protected:
             block(
                 "writing to tools/ or deploy/ from the shell is not allowed — that is the "
                 "measurement and enforcement layer. If a tool is genuinely wrong, report it and "
@@ -68,7 +90,12 @@ def main() -> int:
             )
 
         touches_state = re.search(STATE_FILES, segment) is not None
-        if touches_state and (MUTATORS.search(segment) or REDIRECT_INTO_STATE.search(segment)):
+        writes_state = touches_state and (
+            DESTRUCTIVE.search(segment) is not None
+            or REDIRECT_INTO_STATE.search(segment) is not None
+            or (COPIERS.search(segment) is not None and destination_matches(segment, STATE_FILES))
+        )
+        if writes_state:
             block(
                 "the kill switch and the budget snapshot are written by the external guard only. "
                 "If KILLED exists the session is over: finish evaluating what is already on disk, "
