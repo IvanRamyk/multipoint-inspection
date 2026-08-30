@@ -50,13 +50,24 @@ def cheapest_offer(max_dph: float | None) -> dict:
     """
     out = subprocess.run(
         [vastai_bin(), "search", "offers", OFFER_QUERY,
-         "--order", "dph_total asc", "--limit", "20", "--raw"],
+         # The vast API rejects a direction suffix ("dph_total asc" -> 400); the
+         # field name alone is accepted. Direction does not matter here because we
+         # re-sort by dph_total ascending in Python below.
+         "--order", "dph_total", "--limit", "20", "--raw"],
         capture_output=True, text=True, check=False,
     )
     if out.returncode != 0:
         raise RuntimeError(f"vastai search failed: {out.stderr.strip()[:300]}")
-    offers = json.loads(out.stdout)
+    # A bad request returns rc 0 with the error object on stderr and empty stdout,
+    # so returncode alone is not enough — parse defensively and fail loudly.
+    body = out.stdout.strip() or out.stderr.strip()
+    try:
+        offers = json.loads(body)
+    except json.JSONDecodeError:
+        raise RuntimeError(f"vastai search returned no JSON: {body[:300]}")
     if isinstance(offers, dict):
+        if offers.get("error"):
+            raise RuntimeError(f"vastai search error: {offers.get('msg')}")
         offers = offers.get("offers", [])
     if not offers:
         raise RuntimeError("no vast.ai offers matched the requirements")
