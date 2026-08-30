@@ -61,7 +61,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from envs.sim_backend import DroneState, SimBackend
+from envs.core.sim_backend import DroneState, SimBackend
 
 
 # Maximum drone speed in m/s, used to scale [-1, 1] actions. Matches PyFlyt.

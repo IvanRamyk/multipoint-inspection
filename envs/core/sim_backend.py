@@ -85,5 +85,11 @@ class SimBackend(ABC):
     def set_waypoint_color(self, index: int, color: list[float]) -> None:
         """Recolor a waypoint marker for visualization. Default: no-op."""
 
+    def set_waypoint_position(self, index: int, position: np.ndarray) -> None:
+        """Move a waypoint/target marker to a new position. Default: no-op.
+
+        Used by the moving-target task to visualize the target each step.
+        """
+
     def close(self) -> None:
         """Release simulator resources. Default: no-op."""

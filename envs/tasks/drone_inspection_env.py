@@ -7,10 +7,10 @@ from typing import Any
 import gymnasium
 import numpy as np
 
-from envs.config import EnvConfig
-from envs.pyflyt_backend import PyFlytBackend
-from envs.sim_backend import SimBackend
-from envs.wind_model import OUWindModel
+from envs.core.config import EnvConfig
+from envs.core.sim_backend import SimBackend
+from envs.core.wind_model import OUWindModel
+from envs.backends.pyflyt_backend import PyFlytBackend
 
 
 # Reward constants.
@@ -47,7 +47,7 @@ def _make_backend(config: EnvConfig, render_mode: str | None) -> SimBackend:
     if name == "airsim":
         # Lazy import: the airsim package is unavailable on macOS, so importing
         # it at module load would break PyFlyt-only environments.
-        from envs.airsim_backend import AirSimBackend
+        from envs.backends.airsim_backend import AirSimBackend
 
         return AirSimBackend(**common)
     raise ValueError(

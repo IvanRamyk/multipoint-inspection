@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from envs.sim_backend import DroneState, SimBackend
+from envs.core.sim_backend import DroneState, SimBackend
 
 
 # Maximum drone speed in m/s, used to scale [-1, 1] actions.
@@ -14,10 +14,12 @@ _MAX_SPEED = 5.0
 _CAM_NEAR = 0.1
 _CAM_FAR = 100.0
 
-# Wind force scaling (Newtons per unit of OU wind output). Lives here so the
-# raw OU vector handed in by the env is interpreted in PyFlyt's own units;
-# net force is identical to the previous (env-side scaled) behavior.
-_WIND_FORCE_SCALE = 10.0
+# Wind is modelled as a velocity-setpoint bias (m/s per unit of OU output),
+# NOT an external force. The QuadX flies in velocity-control mode (mode 6); an
+# external force fights that inner controller and drives it unstable (the loop
+# diverges to 100+ m/s for even a ~0.2 N disturbance). Biasing the commanded
+# velocity instead pushes the drone off course in a stable, well-posed way.
+_WIND_SPEED_SCALE = _MAX_SPEED
 
 
 class PyFlytBackend(SimBackend):
@@ -50,6 +52,9 @@ class PyFlytBackend(SimBackend):
         self._obstacle_ids: list[int] = []
         self._waypoint_ids: list[int] = []
         self._steps_per_agent_step: int = 1
+
+        # Last commanded velocity (m/s), so wind can bias it. Set by apply_action.
+        self._last_cmd_vel: np.ndarray | None = None
 
         # Precompute projection matrix (stays constant).
         self._proj_matrix: list[float] | None = None
@@ -219,6 +224,8 @@ class PyFlytBackend(SimBackend):
         vx = float(velocity[0]) * _MAX_SPEED
         vy = float(velocity[1]) * _MAX_SPEED
         vz = float(velocity[2]) * _MAX_SPEED
+        # Remember the base command so apply_wind can add its bias on top.
+        self._last_cmd_vel = np.array([vx, vy, vz], dtype=np.float64)
         # Mode 6 setpoint: (vx, vy, yaw_rate, vz)
         self._aviary.set_setpoint(0, np.array([vx, vy, 0.0, vz]))
 
@@ -228,19 +235,24 @@ class PyFlytBackend(SimBackend):
             self._aviary.step()
 
     def apply_wind(self, wind_vec: np.ndarray) -> None:
-        """Apply an external wind force to the drone.
+        """Bias the velocity setpoint to model wind pushing the drone.
+
+        Must be called after :meth:`apply_action` (which records the base
+        command). The wind vector is added, in m/s, to the commanded velocity,
+        so the drone is pushed off course while the inner velocity controller
+        stays stable. Applying wind as an external force instead destabilises
+        the mode-6 controller.
 
         Args:
-            wind_vec: (3,) raw OU wind vector, world frame. Scaled to a
-                force in Newtons internally by ``_WIND_FORCE_SCALE``.
+            wind_vec: (3,) raw OU wind vector, world frame. Scaled to m/s by
+                ``_WIND_SPEED_SCALE``.
         """
-        wind_force = np.asarray(wind_vec, dtype=np.float64) * _WIND_FORCE_SCALE
-        self._aviary.applyExternalForce(
-            objectUniqueId=self._drone_id,
-            linkIndex=-1,
-            forceObj=wind_force.tolist(),
-            posObj=[0.0, 0.0, 0.0],
-            flags=self._aviary.WORLD_FRAME,
+        if self._last_cmd_vel is None:
+            self._last_cmd_vel = np.zeros(3, dtype=np.float64)
+        wind_vel = np.asarray(wind_vec, dtype=np.float64) * _WIND_SPEED_SCALE
+        biased = self._last_cmd_vel + wind_vel
+        self._aviary.set_setpoint(
+            0, np.array([biased[0], biased[1], 0.0, biased[2]])
         )
 
     def set_waypoint_color(self, index: int, color: list[float]) -> None:
@@ -253,6 +265,20 @@ class PyFlytBackend(SimBackend):
         if index < len(self._waypoint_ids):
             self._aviary.changeVisualShape(
                 self._waypoint_ids[index], -1, rgbaColor=color
+            )
+
+    def set_waypoint_position(self, index: int, position: np.ndarray) -> None:
+        """Move a waypoint marker (e.g. a moving target) to a new position.
+
+        Args:
+            index: Waypoint marker index.
+            position: (3,) new world-frame position.
+        """
+        if index < len(self._waypoint_ids):
+            self._aviary.resetBasePositionAndOrientation(
+                self._waypoint_ids[index],
+                [float(position[0]), float(position[1]), float(position[2])],
+                [0.0, 0.0, 0.0, 1.0],
             )
 
     def close(self) -> None:

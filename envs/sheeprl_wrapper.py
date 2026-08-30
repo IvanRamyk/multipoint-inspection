@@ -5,8 +5,10 @@ from __future__ import annotations
 import gymnasium as gym
 import numpy as np
 
-from envs.config import EnvConfig
-from envs.drone_inspection_env import DroneInspectionEnv
+from envs.core.config import EnvConfig
+from envs.tasks.drone_inspection_env import DroneInspectionEnv
+from envs.tasks.drone_target_env import DroneTargetEnv
+from envs.tasks.drone_chase_env import DroneChaseEnv
 
 
 class SheepRLCompatWrapper(gym.ObservationWrapper):
@@ -55,3 +57,86 @@ def make_drone_inspection_env(
     env = DroneInspectionEnv(config_path=config_path, render_mode=render_mode)
     env = SheepRLCompatWrapper(env)
     return env
+
+
+def make_drone_target_env(
+    config_path: str = "configs/target/l0_smoke.yaml",
+    render_mode: str | None = None,
+    record_video_every: int = 0,
+    record_video_dir: str = "results/training_videos",
+    record_video_max: int = 0,
+    record_video_3d: bool = True,
+    record_video_nest_under_run: bool = True,
+    **kwargs,
+) -> gym.Env:
+    """Factory for sheeprl's Hydra instantiation of the moving-target task.
+
+    Creates DroneTargetEnv wrapped with SheepRLCompatWrapper, and — when
+    ``record_video_every > 0`` — an EpisodeVideoRecorder that dumps a trajectory
+    video every N episodes (set via ``env.wrapper.record_video_every=N``).
+
+    Args:
+        config_path: Path to YAML environment config.
+        render_mode: Gymnasium render mode.
+        record_video_every: Record one episode video every N episodes (0 off).
+        record_video_dir: Output directory for training videos.
+        record_video_max: Cap on number of videos (0 = unlimited).
+        record_video_3d: Render the orbiting 3D view (else 2D).
+
+    Returns:
+        Wrapped DroneTargetEnv ready for sheeprl.
+    """
+    env = DroneTargetEnv(config_path=config_path, render_mode=render_mode)
+    env = SheepRLCompatWrapper(env)
+    return _maybe_record(
+        env, record_video_every, record_video_dir, record_video_max,
+        record_video_3d, record_video_nest_under_run,
+    )
+
+
+def _maybe_record(env, every, out_dir, max_videos, use_3d, nest_under_run):
+    """Wrap with EpisodeVideoRecorder when episode-video recording is enabled.
+
+    Attaches to every env; the recorder's lock-file claim ensures exactly one
+    process actually records (works for both sync and async vector envs).
+    """
+    if every and int(every) > 0:
+        # Imported lazily so plain training runs never touch matplotlib/ffmpeg.
+        from eval.episode_recorder import EpisodeVideoRecorder
+
+        env = EpisodeVideoRecorder(
+            env,
+            record_every=int(every),
+            out_dir=out_dir,
+            max_videos=int(max_videos),
+            use_3d=bool(use_3d),
+            nest_under_run=bool(nest_under_run),
+        )
+    return env
+
+
+def make_drone_chase_env(
+    config_path: str = "configs/target/chase.yaml",
+    render_mode: str | None = None,
+    record_video_every: int = 0,
+    record_video_dir: str = "results/training_videos",
+    record_video_max: int = 0,
+    record_video_3d: bool = True,
+    record_video_nest_under_run: bool = True,
+    **kwargs,
+) -> gym.Env:
+    """Factory for sheeprl's Hydra instantiation of the two-drone chase task.
+
+    Creates DroneChaseEnv (pursuer + a physical target drone following a
+    non-self-intersecting waypoint plan) wrapped with SheepRLCompatWrapper, and
+    optionally the EpisodeVideoRecorder.
+
+    Returns:
+        Wrapped DroneChaseEnv ready for sheeprl.
+    """
+    env = DroneChaseEnv(config_path=config_path, render_mode=render_mode)
+    env = SheepRLCompatWrapper(env)
+    return _maybe_record(
+        env, record_video_every, record_video_dir, record_video_max,
+        record_video_3d, record_video_nest_under_run,
+    )
