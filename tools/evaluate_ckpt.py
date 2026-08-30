@@ -147,6 +147,12 @@ def main() -> int:
     ap.add_argument("--out", default=None, help="Output JSON path (default: campaign evals/).")
     ap.add_argument("--tag", default=None,
                     help="Filename suffix, e.g. 'review', so a re-eval does not overwrite.")
+    ap.add_argument("--trajectories", default=None,
+                    help="Directory for per-episode .npz trajectories (default: the campaign's "
+                         "trajectories/<run_id><tag>/). The contact sheet the reviewer reads is "
+                         "built from these, so they are written by default, not on request.")
+    ap.add_argument("--no-trajectories", action="store_true",
+                    help="Skip trajectory recording. Then no contact sheet can be built.")
     ap.add_argument("--plots", action="store_true", help="Also render plots (slow).")
     ap.add_argument("--force", action="store_true", help="Re-evaluate even if the JSON exists.")
     ap.add_argument("--fake", action="store_true",
@@ -184,6 +190,17 @@ def main() -> int:
         if ckpt is None:
             raise SystemExit(f"no checkpoints under {run_dir}/checkpoint")
 
+        # Trajectories are the reviewer's contact sheet. Record them by default, to
+        # a deterministic per-eval dir, so the visual check is never silently blank.
+        traj_dir = None
+        if not args.no_trajectories:
+            if args.trajectories:
+                traj_dir = Path(args.trajectories)
+                if not traj_dir.is_absolute():
+                    traj_dir = st.REPO_ROOT / traj_dir
+            else:
+                traj_dir = st.campaign_dir(args.campaign) / "trajectories" / f"{args.run_id}{suffix}"
+
         cmd = [
             str(st.REPO_ROOT / "venv/bin/python"),
             str(st.REPO_ROOT / "scripts/eval_target_ckpt.py"), str(ckpt),
@@ -195,6 +212,8 @@ def main() -> int:
             "--seed", str(args.seed),
             "--json", str(out_path),
         ]
+        if traj_dir is not None:
+            cmd += ["--trajectories", str(traj_dir)]
         if not Path(cmd[0]).exists():
             cmd[0] = sys.executable
         if not args.plots:
@@ -211,6 +230,8 @@ def main() -> int:
             "rung": rec.get("rung"),
             "seed": rec.get("seed"),
         })
+        if traj_dir is not None:
+            payload["trajectories"] = str(traj_dir.relative_to(st.REPO_ROOT))
         st.write_json_atomic(out_path, payload)
 
     st.update_run(args.campaign, args.run_id, status="evaluated", eval={
