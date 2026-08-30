@@ -1,0 +1,26 @@
+defaults:
+  - default
+  - _self_
+
+# Moving-target interception task.
+id: DroneTarget-sheeprl-v0
+num_envs: 1
+sync_env: true
+screen_size: 64
+grayscale: true
+action_repeat: 1
+frame_stack: 1
+capture_video: false
+max_episode_steps: null
+
+wrapper:
+  _target_: envs.sheeprl_wrapper.make_drone_target_env
+  config_path: configs/target/l0_smoke.yaml
+  render_mode: rgb_array
+  # Training-episode video recording (0 disables). Override on the CLI, e.g.
+  #   env.wrapper.record_video_every=1000
+  record_video_every: 0
+  record_video_dir: results/training_videos   # only used if nest_under_run=false
+  record_video_max: 0
+  record_video_3d: true
+  record_video_nest_under_run: true           # videos go to <run dir>/videos/

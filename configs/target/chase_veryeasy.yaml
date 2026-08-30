@@ -1,0 +1,25 @@
+# Chase task, "reliably winnable" variant (iteration 4): small dome, short route,
+# slow target, generous catch — sanity-recipe philosophy to get a policy that
+# catches CONSISTENTLY (baseline ~33% is window-dependent; prior fixes didn't help).
+flight_dome_size: 12.0              # smaller arena (was 20)
+target_reach_distance: 2.5          # generous catch (was 1.5)
+target_altitude_min: 1.5
+target_altitude_max: 4.0            # narrower altitude band
+
+chase_num_waypoints: 4              # short route (was 8)
+chase_min_separation: 3.0
+chase_ordering: 2opt
+chase_target_speed_cap: 0.2         # ~1 m/s slow target (big pursuer advantage)
+chase_target_gain: 0.5
+chase_waypoint_reach: 1.5
+
+wind_enabled: false
+num_obstacles: 0
+max_episode_steps: 500
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 1.0                 # moderate (2.0 amplified swings in iter 2)
+collision_penalty: -10.0
+target_catch_reward: 60.0

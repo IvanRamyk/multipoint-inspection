@@ -1,0 +1,27 @@
+# Chase task, intermediate curriculum rung (iteration 6): halfway between
+# chase_veryeasy (where the policy is genuinely 50% greedy) and chase_easy
+# (where a direct warm-start dropped to 10-20%). One rung of the ladder:
+# slightly bigger arena, longer route, slightly faster target. Shaping stays
+# 1.0 — 2.0 (chase_easy) amplifies divergence tails (rewards of -150 on misses).
+flight_dome_size: 16.0              # veryeasy 12 -> easy 20
+target_reach_distance: 2.0          # veryeasy 2.5 -> easy 2.0 (already at rung target)
+target_altitude_min: 1.5
+target_altitude_max: 5.0            # veryeasy 4 -> easy 6
+
+chase_num_waypoints: 6              # veryeasy 4 -> easy 8
+chase_min_separation: 3.0
+chase_ordering: 2opt
+chase_target_speed_cap: 0.25        # ~1.25 m/s (veryeasy 0.2 -> easy 0.3)
+chase_target_gain: 0.5
+chase_waypoint_reach: 1.5
+
+wind_enabled: false
+num_obstacles: 0
+max_episode_steps: 600
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 1.0
+collision_penalty: -10.0
+target_catch_reward: 60.0

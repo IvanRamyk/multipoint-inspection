@@ -1,0 +1,24 @@
+defaults:
+  - default
+  - _self_
+
+# Two-drone chase task.
+id: DroneChase-sheeprl-v0
+num_envs: 1
+sync_env: true
+screen_size: 64
+grayscale: true
+action_repeat: 1
+frame_stack: 1
+capture_video: false
+max_episode_steps: null
+
+wrapper:
+  _target_: envs.sheeprl_wrapper.make_drone_chase_env
+  config_path: configs/target/chase.yaml
+  render_mode: rgb_array
+  record_video_every: 0
+  record_video_dir: results/training_videos
+  record_video_max: 0
+  record_video_3d: true
+  record_video_nest_under_run: true

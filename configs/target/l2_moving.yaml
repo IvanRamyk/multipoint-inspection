@@ -1,0 +1,24 @@
+# L2 — headline task. Dubins car at walking pace, larger dome, wind on,
+# tighter catch radius, weaker shaping, mild collision penalty.
+target_mode: car2d
+flight_dome_size: 20.0
+target_speed: 1.0
+target_turn_rate_max: 0.8
+target_ou_theta: 0.5
+target_ou_sigma: 1.5
+target_altitude: 2.5
+target_spawn_radius_frac: 0.5
+target_boundary_frac: 0.8
+target_reach_distance: 1.5
+
+wind_enabled: true
+wind_strength: 0.2
+num_obstacles: 0
+max_episode_steps: 600
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 0.5
+collision_penalty: -10.0
+target_catch_reward: 60.0

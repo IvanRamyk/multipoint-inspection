@@ -1,0 +1,19 @@
+# L0 — smoke test. Static target, tiny dome, generous catch radius, dense
+# shaping, no collision penalty. Purpose: confirm the whole pipeline runs and
+# the agent can reach a fixed goal fast. Not a research task.
+target_mode: static
+flight_dome_size: 6.0
+target_spawn_radius_frac: 0.7    # ~2.1 m from centre → drone must fly ~2.3 m
+target_altitude: 2.0
+target_reach_distance: 1.5
+
+wind_enabled: false
+num_obstacles: 0
+max_episode_steps: 300
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 2.0
+collision_penalty: 0.0
+target_catch_reward: 60.0

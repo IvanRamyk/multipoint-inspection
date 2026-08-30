@@ -1,0 +1,27 @@
+# Chase task, "easy" geometry with stable shaping (iteration 7 target).
+# Identical to chase_easy.yaml except reward_shaping 2.0 -> 1.0: the denser
+# shaping amplified divergence tails (miss episodes at reward -150) without
+# improving catch rate. This is the "not-trivial" benchmark config: full
+# dome 20, 8-waypoint route, ~1.5 m/s target, catch radius 2.0.
+flight_dome_size: 20.0
+target_reach_distance: 2.0
+target_altitude_min: 1.5
+target_altitude_max: 6.0
+
+chase_num_waypoints: 8
+chase_min_separation: 3.0
+chase_ordering: 2opt
+chase_target_speed_cap: 0.3         # ~1.5 m/s
+chase_target_gain: 0.5
+chase_waypoint_reach: 1.5
+
+wind_enabled: false
+num_obstacles: 0
+max_episode_steps: 600
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 1.0
+collision_penalty: -10.0
+target_catch_reward: 60.0

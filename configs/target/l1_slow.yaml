@@ -1,0 +1,23 @@
+# L1 — first real moving-target run. Slow Dubins car, small dome, no wind.
+# Dense shaping still on so learning starts quickly.
+target_mode: car2d
+flight_dome_size: 10.0
+target_speed: 0.3
+target_turn_rate_max: 0.5
+target_ou_theta: 0.5
+target_ou_sigma: 1.5
+target_altitude: 2.0
+target_spawn_radius_frac: 0.4
+target_boundary_frac: 0.8
+target_reach_distance: 2.0
+
+wind_enabled: false
+num_obstacles: 0
+max_episode_steps: 400
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 1.0
+collision_penalty: 0.0
+target_catch_reward: 60.0

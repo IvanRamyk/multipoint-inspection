@@ -1,0 +1,31 @@
+# L4 — hardest. Fast 3D target under partial observability: target velocity is
+# hidden and its observed position is noisy, so the recurrent world model has to
+# infer motion. This is the level where DreamerV3's latent dynamics should pay
+# off over a reactive policy.
+target_mode: airplane3d
+flight_dome_size: 25.0
+target_speed: 2.0
+target_turn_rate_max: 1.0
+target_ou_theta: 0.5
+target_ou_sigma: 1.5
+target_spawn_radius_frac: 0.5
+target_boundary_frac: 0.8
+target_reach_distance: 1.5
+target_climb_rate_max: 1.5
+target_altitude_min: 1.5
+target_altitude_max: 7.0
+
+target_observe_velocity: false
+target_position_noise: 0.3
+
+wind_enabled: true
+wind_strength: 0.25
+num_obstacles: 0
+max_episode_steps: 800
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 0.25
+collision_penalty: -100.0
+target_catch_reward: 60.0

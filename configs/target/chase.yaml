@@ -1,0 +1,26 @@
+# Two-drone chase task: pursue a second QuadX drone that flies a
+# non-self-intersecting (2-opt) waypoint route with real physics.
+flight_dome_size: 20.0
+target_reach_distance: 1.5          # catch radius (pursuer within this = success)
+target_altitude_min: 1.5
+target_altitude_max: 6.0
+
+# Target drone's waypoint plan + follower
+chase_num_waypoints: 8
+chase_min_separation: 3.0
+chase_ordering: 2opt                # non-crossing, natural route
+chase_target_speed_cap: 0.4         # ~2 m/s (× _MAX_SPEED 5)
+chase_target_gain: 0.5
+chase_waypoint_reach: 1.5
+
+wind_enabled: true
+wind_strength: 0.2
+num_obstacles: 0
+max_episode_steps: 600
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 0.5
+collision_penalty: -10.0
+target_catch_reward: 60.0

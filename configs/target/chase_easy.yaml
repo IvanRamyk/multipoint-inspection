@@ -1,0 +1,25 @@
+# Chase task, stabilized/easier variant (iteration 2): denser reward shaping,
+# slower target, more forgiving catch radius, no wind — to get a RELIABLY
+# catching greedy policy (baseline chase.yaml learned but was unstable, greedy 0%).
+flight_dome_size: 20.0
+target_reach_distance: 2.0          # more forgiving catch (was 1.5)
+target_altitude_min: 1.5
+target_altitude_max: 6.0
+
+chase_num_waypoints: 8
+chase_min_separation: 3.0
+chase_ordering: 2opt
+chase_target_speed_cap: 0.3         # ~1.5 m/s target (was 0.4/~2 m/s)
+chase_target_gain: 0.5
+chase_waypoint_reach: 1.5
+
+wind_enabled: false                 # remove disturbance for cleaner learning
+num_obstacles: 0
+max_episode_steps: 600
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 2.0                 # denser gradient -> smoother landscape, stability (was 0.5)
+collision_penalty: -10.0
+target_catch_reward: 60.0
