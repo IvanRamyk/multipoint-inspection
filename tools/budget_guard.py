@@ -120,7 +120,10 @@ def destroy_all(binary: str, instances: list[dict]) -> list[str]:
     for inst in instances:
         iid = str(inst.get("id"))
         log(f"destroying instance {iid}")
-        vastai(binary, "destroy", "instance", iid)
+        # -y skips the CLI's interactive confirmation; without it the subprocess
+        # reads EOF at the "[y/N]" prompt and aborts, so the guard could latch
+        # KILLED yet never actually stop the billing it exists to stop.
+        vastai(binary, "destroy", "instance", iid, "-y")
     time.sleep(10)
     after = list_instances(binary)
     if after is None:

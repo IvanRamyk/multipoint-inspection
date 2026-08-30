@@ -47,7 +47,9 @@ fi
 
 for id in $IDS; do
   echo "==> destroying $id"
-  "$VASTAI" destroy instance "$id" || echo "  (destroy failed for $id)"
+  # -y skips the CLI's interactive "[y/N]" confirmation; without it a
+  # non-interactive reap reads EOF and aborts, leaving the instance billing.
+  "$VASTAI" destroy instance "$id" -y </dev/null || echo "  (destroy failed for $id)"
 done
 
 sleep 10
