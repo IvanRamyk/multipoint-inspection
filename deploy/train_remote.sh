@@ -99,19 +99,24 @@ PYTHON="${DREAMER_IMAGE:+python}"
 PYTHON="${PYTHON:-venv/bin/python}"
 FULL_CMD="${PYTHON} scripts/train_dreamer.py fabric.accelerator=gpu fabric.precision=16-mixed ${TRAIN_ARGS}"
 
+# Launch training in a detached tmux session. Two hard-won constraints on the
+# remote command below:
+#   1. Give the command to `tmux new-session` directly, not via `send-keys`.
+#      send-keys races the shell's readiness and on some images silently drops
+#      the keystrokes, leaving a live-but-idle session and no train.log.
+#   2. No worker-killing pkill here. A `pkill -f <pat>` run over ssh matches its
+#      OWN parent shell (the pattern is in the shell's command line, comments
+#      included), killing the connection with exit 255 before training starts.
+#      Every seed trains on a fresh box (one run per box), so there is nothing to
+#      clean up anyway; `tmux kill-session` handles a stale session on reuse.
+# Also: everything inside the double-quoted ssh string is expanded locally, so it
+# must contain no backticks and no $(...) unless you intend command substitution.
 # shellcheck disable=SC2029
 ssh ${SSH_OPTS} "${REMOTE}" "
   cd ${REMOTE_DIR}
-  # Kill any existing session to avoid stale state.
   tmux kill-session -t train 2>/dev/null || true
-  # IMPORTANT: sheeprl's async vector-env workers get orphaned (reparented to
-  # init) when the tmux session is killed and keep running, stealing CPU/GPU
-  # from the new run. Explicitly kill every lingering sheeprl process first.
-  pkill -9 -f 'python -m sheeprl' 2>/dev/null || true
-  sleep 3
-  # Start new detached session, log stdout+stderr to a file
-  tmux new-session -d -s train -x 220 -y 50
-  tmux send-keys -t train 'cd ${REMOTE_DIR} && ${FULL_CMD} 2>&1 | tee train.log' Enter
+  sleep 2
+  tmux new-session -d -s train 'cd ${REMOTE_DIR} && ${FULL_CMD} 2>&1 | tee train.log'
   echo 'Training started.'
 "
 
