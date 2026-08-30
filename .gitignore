@@ -28,3 +28,4 @@ __pycache__/
 
 # Accidental literal "~" directory from an unquoted shell expansion.
 /~/
+.claude/settings.local.json

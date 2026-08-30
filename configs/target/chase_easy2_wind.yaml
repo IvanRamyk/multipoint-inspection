@@ -1,0 +1,29 @@
+# Chase task, chase_easy2 with wind ON — R2 of the 2026-08-chase-hardening campaign.
+# One axis off chase_easy2: wind_enabled false -> true at chase.yaml's strength
+# (0.2), so a failure here attributes to wind and nothing else. OU theta/sigma stay
+# at the EnvConfig defaults (0.15 / 0.2), which is what chase.yaml also does.
+# Wind is a velocity-setpoint bias in pyflyt_backend.apply_wind(), never an
+# external force — mode-6 velocity control diverges under an applied force.
+flight_dome_size: 20.0
+target_reach_distance: 2.0
+target_altitude_min: 1.5
+target_altitude_max: 6.0
+
+chase_num_waypoints: 8
+chase_min_separation: 3.0
+chase_ordering: 2opt
+chase_target_speed_cap: 0.3         # ~1.5 m/s — unchanged from chase_easy2
+chase_target_gain: 0.5
+chase_waypoint_reach: 1.5
+
+wind_enabled: true                  # chase_easy2: false
+wind_strength: 0.2                  # matches chase.yaml
+num_obstacles: 0
+max_episode_steps: 600
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 1.0
+collision_penalty: -10.0
+target_catch_reward: 60.0

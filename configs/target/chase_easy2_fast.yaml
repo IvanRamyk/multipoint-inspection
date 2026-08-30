@@ -1,0 +1,28 @@
+# Chase task, chase_easy2 with a faster target — R3 of the 2026-08-chase-hardening
+# campaign. One axis off chase_easy2: chase_target_speed_cap 0.3 -> 0.4
+# (~1.5 -> ~2 m/s), which is chase.yaml's setting. Wind stays off and the catch
+# radius stays 2.0, so a failure here attributes to target speed alone.
+# At 0.4 the target's usable speed approaches the pursuer's well-behaved command
+# range (~0.5 clipped), which is why R3's bar in spec.md is lower than R2's.
+flight_dome_size: 20.0
+target_reach_distance: 2.0
+target_altitude_min: 1.5
+target_altitude_max: 6.0
+
+chase_num_waypoints: 8
+chase_min_separation: 3.0
+chase_ordering: 2opt
+chase_target_speed_cap: 0.4         # chase_easy2: 0.3 (~1.5 m/s) -> ~2 m/s
+chase_target_gain: 0.5
+chase_waypoint_reach: 1.5
+
+wind_enabled: false
+num_obstacles: 0
+max_episode_steps: 600
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 1.0
+collision_penalty: -10.0
+target_catch_reward: 60.0
