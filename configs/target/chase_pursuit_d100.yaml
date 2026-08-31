@@ -1,0 +1,38 @@
+# Chase task - "pursuit" variant (iteration 3): chase_open + FAR spawn (25m) + faster
+# Goal: make loitering fail so the policy must actually pursue. Three changes vs
+# chase_easy2, applied together (this is exploration, not a clean single-axis ablation):
+#   1. distance_penalty 0.02 — NON-telescoping: being far from the target costs at
+#      every step (unlike the potential-based reward_shaping, which telescopes to net
+#      closure and is policy-invariant). Waiting now bleeds reward continuously.
+#   2. flight_dome_size 500 — waypoints spread over a ~250 m radius, so the target
+#      roams far; the drone can no longer just wait for it to come back around.
+#   3. target_reach_distance 0.75 — tighter catch (~7.5x the ~0.1 m drone) demanding
+#      precise interception rather than "drift within 2 m".
+# chase_spawn_radius 10 keeps the START close (target spawns within 10 m of the
+# centre-spawned pursuer) so the episode is winnable, while the route leads away.
+# Target stays slow (speed cap 0.3, ~1.5 m/s) so the faster pursuer (~2.5 m/s) can
+# still catch it by chasing. NOT directly comparable to R1 (chase_easy2).
+flight_dome_size: 500.0
+target_reach_distance: 0.75
+target_altitude_min: 1.5
+target_altitude_max: 6.0
+
+chase_num_waypoints: 8
+chase_min_separation: 3.0
+chase_ordering: 2opt
+chase_spawn_radius: 100.0            # AMBITIOUS: start ~100m away
+chase_target_speed_cap: 0.3          # ~1.5 m/s (give the 100m chase a chance)
+chase_target_gain: 0.5
+chase_waypoint_reach: 1.5
+
+wind_enabled: false
+num_obstacles: 0
+max_episode_steps: 1500              # ~50s: pursuer (~2.5 m/s) can cross 100m
+agent_hz: 30
+image_width: 64
+image_height: 64
+
+reward_shaping: 1.0                  # keep potential-based shaping for learnability
+distance_penalty: 0.01              # scaled down for larger distances/longer episode
+collision_penalty: -10.0
+target_catch_reward: 60.0
