@@ -184,16 +184,30 @@ class WaypointPlan:
         method: str = "2opt",
         reach: float = 1.5,
         loop: bool = True,
+        spawn_radius: float = 0.0,
     ) -> "WaypointPlan":
-        """Sample points and order them into a simple route (default 2-opt)."""
-        pts = generate_points(n, dome_size, rng, min_separation, altitude_range)
-        if method == "angular":
-            order = order_angular(pts)
-        elif method == "2opt":
-            order = order_simple_2opt(pts, rng)
-        else:
+        """Sample points and order them into a simple route (default 2-opt).
+
+        When ``spawn_radius`` > 0 the FIRST waypoint (the target's spawn/start) is
+        sampled within that small disk while the remaining waypoints spread over the
+        full ``dome_size`` disk. This decouples where the chase starts from how far
+        the target roams: a close start, then a route that leads far away.
+        """
+        def _order(p: np.ndarray) -> np.ndarray:
+            if method == "angular":
+                return order_angular(p)
+            if method == "2opt":
+                return order_simple_2opt(p, rng)
             raise ValueError(f"unknown ordering method {method!r}")
-        return cls(pts[order], reach=reach, loop=loop)
+
+        if spawn_radius and spawn_radius > 0.0 and n > 1:
+            first = generate_points(1, 2.0 * spawn_radius, rng, min_separation, altitude_range)
+            rest = generate_points(n - 1, dome_size, rng, min_separation, altitude_range)
+            pts = np.vstack([first, rest[_order(rest)]]).astype(np.float32)
+            return cls(pts, reach=reach, loop=loop)
+
+        pts = generate_points(n, dome_size, rng, min_separation, altitude_range)
+        return cls(pts[_order(pts)], reach=reach, loop=loop)
 
     def current(self) -> np.ndarray:
         """Current target waypoint (3,)."""

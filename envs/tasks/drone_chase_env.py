@@ -108,6 +108,7 @@ class DroneChaseEnv(gymnasium.Env):
             method=self.config.chase_ordering,
             reach=self.config.chase_waypoint_reach,
             loop=True,
+            spawn_radius=self.config.chase_spawn_radius,
         )
         # Target starts at the first waypoint and heads to the next.
         target_start = self._plan.waypoints[0].astype(np.float32)
@@ -181,6 +182,12 @@ class DroneChaseEnv(gymnasium.Env):
         if not terminated and self.config.reward_shaping > 0.0:
             if self._prev_dist is not None:
                 reward += self.config.reward_shaping * (self._prev_dist - curr_dist)
+        # Non-telescoping distance penalty: being far from the target costs at every
+        # step, so loitering while the target roams a large dome is continuously
+        # penalised and active pursuit pays off. Applied whether or not caught this
+        # step (a catch sets terminated but the step still spent time at distance).
+        if self.config.distance_penalty > 0.0:
+            reward -= self.config.distance_penalty * curr_dist
         self._prev_dist = curr_dist
 
         truncated = self._step_count >= self.config.max_episode_steps

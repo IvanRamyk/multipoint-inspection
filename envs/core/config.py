@@ -49,6 +49,13 @@ class EnvConfig:
     # 0.0 disables shaping.
     reward_shaping: float = 0.0
 
+    # Non-telescoping per-step distance penalty (chase task): reward -= distance_penalty
+    # * current_distance_to_target every step. Unlike the potential-based shaping above
+    # (which telescopes to net closure and is policy-invariant), this penalises being far
+    # at *every* step, so waiting for the target costs continuously and active pursuit is
+    # rewarded. 0.0 disables it.
+    distance_penalty: float = 0.0
+
     # Collision penalty (negative). Default −100 matches the original spec;
     # override per-config to soften for sanity tasks where collisions are mostly
     # ground/dome hits rather than meaningful obstacles.
@@ -86,6 +93,11 @@ class EnvConfig:
     chase_num_waypoints: int = 8              # points in the target's route
     chase_min_separation: float = 3.0         # min xy spacing between waypoints
     chase_ordering: str = "2opt"              # "2opt" (natural) or "angular"
+    # Radius (m) within which the target's FIRST waypoint (its spawn) is sampled.
+    # Decouples spawn from waypoint spread: keep this small so the chase starts
+    # close, while flight_dome_size can be large so the target then roams far and
+    # loitering fails. 0.0 = use the dome radius (flight_dome_size/2), i.e. legacy.
+    chase_spawn_radius: float = 0.0
     chase_target_speed_cap: float = 0.4       # target velocity cap in [0,1] (×_MAX_SPEED)
     chase_target_gain: float = 0.5            # P-gain of the target's waypoint follower
     chase_waypoint_reach: float = 1.5         # target advances to next waypoint within this
