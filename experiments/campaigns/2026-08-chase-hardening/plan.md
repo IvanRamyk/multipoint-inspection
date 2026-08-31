@@ -10,8 +10,16 @@ spec left a blank to be *measured* (R0's cost model), that measurement is record
 - Task `chase`, `--exp drone_chase` (which already pins `override /algo: dreamer_v3_XS`, so
   `algo=` is **not** passed again — a redundant group override risks a Hydra conflict).
 - `--backend vast`, `--steps 1500000` (ceiling), `--num-envs 4`, `--log-every 1000`,
-  `--checkpoint-every 50000`. `fabric.accelerator=gpu fabric.precision=16-mixed` are injected by
+  `--checkpoint-every 1000`. `fabric.accelerator=gpu fabric.precision=16-mixed` are injected by
   `deploy/train_remote.sh`, so they are not repeated on the launch line.
+  - **checkpoint.every overridden 50000 -> 1000 (human-directed, 2026-08-31).** The spec's ground
+    rule of 50000 defeated early-stopping: chase_easy2 early-stops around step 29k, before the first
+    50k checkpoint, so the first R1-s1 run learned to catch (rew_avg 54) but saved NO checkpoint and
+    was unevaluable. Checkpoint frequency is pure I/O — it does not change what any rung learns, so
+    cross-rung comparability is preserved. 1000 guarantees a checkpoint exists before the earliest
+    possible stop (stop-window 5 x log-every 1000 = 5000 steps) and that the stop captures a
+    near-stop policy. `spec.md` is left as written (checksummed record); this override is recorded
+    here and in the journal.
 - Early stop: `--stop-metric Rewards/rew_avg --stop-threshold 40 --stop-window 5 --stop-patience 3`.
 - Guard rails on every launch: `--max-dph 1.0 --min-headroom 2.0`.
 - Every rung trains **from scratch**. No warm-starting (constitution §1.6).

@@ -27,7 +27,13 @@ are the ones that bite an automated loop specifically.
    10–20%. Train each rung from scratch unless a human approves otherwise.
 7. **CPU training is debug-only** (~30–60 env-steps/min). Never draw a conclusion
    from a CPU run.
-8. **`checkpoint.every` counts env-steps, not gradient steps.**
+8. **`checkpoint.every` counts env-steps, not gradient steps.** Keep it small —
+   **1000 env-steps** is the default (`tools/launch_run.py`). It MUST be smaller
+   than the earliest possible early-stop (`stop-window * log-every`), or a
+   fast-learning run stops *before* its first checkpoint and leaves nothing to
+   evaluate. Always checkpoint every 1000 steps AND at the stop: on early stop,
+   `scripts/train_dreamer.py:_graceful_stop` will not terminate a successful run
+   until a checkpoint exists on disk.
 9. **One training run per box.** `deploy/train_remote.sh` kills any existing run
    on the instance, so N seeds means N instances.
 

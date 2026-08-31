@@ -14,7 +14,7 @@ the rung's gate is decided by the reviewer.
 
 Common launch flags (every run):
 `--exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000
---checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 --stop-window 5
+--checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 --stop-window 5
 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0`
 
 ---
@@ -27,7 +27,7 @@ Common launch flags (every run):
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R1 \
   --env-config configs/target/chase_easy2.yaml --seed 1 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 
@@ -38,7 +38,7 @@ venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R1
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R1 \
   --env-config configs/target/chase_easy2.yaml --seed 2 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 - [ ] `R1-chase_easy2-s3`
@@ -46,7 +46,7 @@ venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R1
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R1 \
   --env-config configs/target/chase_easy2.yaml --seed 3 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 - [ ] R1 aggregate + gate (after all three seeds `evaluated`):
@@ -69,7 +69,7 @@ triviality, which is expected and not a suitability block). If a *fresh* baselin
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R2 \
   --env-config configs/target/chase_easy2_wind.yaml --seed 1 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 - [ ] `R2-chase_easy2_wind-s2`
@@ -77,7 +77,7 @@ venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R2
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R2 \
   --env-config configs/target/chase_easy2_wind.yaml --seed 2 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 - [ ] R2 aggregate + gate (mean ≥ 0.45; reviewer also checks within 15 pts of R1's mean):
@@ -100,7 +100,7 @@ _Kept below for reference only; the orchestrator must skip this rung and Conclud
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R3 \
   --env-config configs/target/chase_easy2_fast.yaml --seed 1 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 - [ ] `R3-chase_easy2_fast-s2`
@@ -108,7 +108,7 @@ venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R3
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R3 \
   --env-config configs/target/chase_easy2_fast.yaml --seed 2 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 - [ ] R3 aggregate + gate (mean ≥ 0.35):
@@ -131,7 +131,7 @@ _Kept below for reference only; the orchestrator must skip this rung and Conclud
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R4 \
   --env-config configs/target/chase.yaml --seed 1 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 - [ ] `R4-chase-s2`
@@ -139,7 +139,7 @@ venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R4
 venv/bin/python tools/launch_run.py --campaign 2026-08-chase-hardening --rung R4 \
   --env-config configs/target/chase.yaml --seed 2 \
   --exp drone_chase --backend vast --steps 1500000 --num-envs 4 --log-every 1000 \
-  --checkpoint-every 50000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
+  --checkpoint-every 1000 --stop-metric Rewards/rew_avg --stop-threshold 40 \
   --stop-window 5 --stop-patience 3 --max-dph 1.0 --min-headroom 2.0
 ```
 - [ ] R4 aggregate + gate (mean ≥ 0.30):

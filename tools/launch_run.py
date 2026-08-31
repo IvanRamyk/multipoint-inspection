@@ -242,7 +242,12 @@ def main() -> int:
     ap.add_argument("--steps", type=int, default=2_000_000, help="algo.total_steps safety ceiling.")
     ap.add_argument("--num-envs", type=int, default=4)
     ap.add_argument("--log-every", type=int, default=1000)
-    ap.add_argument("--checkpoint-every", type=int, default=50_000)
+    # 1000 env-steps: small enough that a checkpoint always exists before the
+    # earliest possible early-stop (stop-window * log-every), so a run that stops
+    # after learning still leaves an evaluable policy on disk. A coarse value
+    # (e.g. 50k) silently discards fast-learning runs that stop before the first
+    # checkpoint. See scripts/train_dreamer.py _graceful_stop.
+    ap.add_argument("--checkpoint-every", type=int, default=1_000)
     ap.add_argument("--override", action="append", default=[],
                     help="Extra Hydra override, repeatable.")
 

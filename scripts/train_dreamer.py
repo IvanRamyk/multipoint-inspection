@@ -159,21 +159,41 @@ def _monitor(proc: subprocess.Popen, args: argparse.Namespace, existing_before: 
 
 
 def _graceful_stop(proc: subprocess.Popen, run_dir: Path, grace: float) -> None:
-    """Wait for a fresh checkpoint (bounded by ``grace``), then terminate."""
+    """Stop training, but never discard the policy we just trained.
+
+    The point of stopping is to keep the learned policy, so we must not terminate
+    with zero checkpoints on disk. Two separate waits:
+
+    * for a checkpoint *newer* than the stop decision — bounded by ``grace``;
+    * for the *first* checkpoint to exist at all — effectively unbounded (a large
+      hard cap only guards against a truly broken run), because terminating a
+      successful run before it ever checkpointed throws the run away.
+
+    With a sane ``checkpoint.every`` (<= the earliest possible stop) the first
+    checkpoint already exists, so this returns as soon as a fresh one lands.
+    """
     print(f"[monitor] performance target reached. Waiting up to {grace:.0f}s "
           f"for a checkpoint newer than the stop decision...")
     decision_ts = time.time()
     baseline = _newest_checkpoint_mtime(run_dir)
     deadline = decision_ts + grace
-    got_fresh = False
-    while time.time() < deadline and proc.poll() is None:
-        if _newest_checkpoint_mtime(run_dir) > baseline:
+    hard_cap = decision_ts + max(grace, 1.0) * 6.0
+    while proc.poll() is None:
+        newest = _newest_checkpoint_mtime(run_dir)
+        if newest > baseline:
             print("[monitor] fresh checkpoint written — stopping now.")
-            got_fresh = True
             break
+        if time.time() >= deadline:
+            if newest > 0.0:
+                print("[monitor] grace elapsed; a usable checkpoint exists — stopping now.")
+                break
+            if time.time() >= hard_cap:
+                print("[monitor] hard cap reached with NO checkpoint on disk — stopping; "
+                      "this run produced nothing evaluable (check checkpoint.every).")
+                break
+            print("[monitor] no checkpoint on disk yet — extending the wait so the "
+                  "stopped policy is actually saved.")
         time.sleep(5.0)
-    if not got_fresh and proc.poll() is None:
-        print("[monitor] grace elapsed without a new checkpoint — stopping anyway.")
     _terminate(proc)
 
 
