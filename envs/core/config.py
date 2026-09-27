@@ -61,6 +61,16 @@ class EnvConfig:
     # ground/dome hits rather than meaningful obstacles.
     collision_penalty: float = -100.0
 
+    # Dense pursuer ground-avoidance penalty. The terminal collision_penalty is
+    # sparse — the policy gets no gradient to avoid the ground until it already
+    # crashed. This penalises the PURSUER for flying below `pursuer_ground_margin`
+    # metres, ramping linearly toward the ground: reward -= pursuer_ground_penalty
+    # * max(0, margin - altitude) each step. Gives an early "pull up" signal so it
+    # stops diving into the ground mid-chase. Set the margin below the target's
+    # minimum altitude so legitimate low catches are not penalised. 0 disables.
+    pursuer_ground_margin: float = 0.0
+    pursuer_ground_penalty: float = 0.0
+
     # -- Moving-target task (DroneTargetEnv) ----------------------------------
     # A single target moves through the dome; the drone must intercept it.
     # target_mode selects the motion model: "static" (never moves — for the L0
@@ -81,6 +91,12 @@ class EnvConfig:
     target_altitude_max: float = 6.0
     # Reward for intercepting the target (episode terminates on success).
     target_catch_reward: float = 60.0
+    # Extra catch reward that decays linearly with elapsed time: on catch,
+    # reward += catch_time_bonus * (steps_remaining / max_episode_steps). So an
+    # immediate catch earns the full bonus and a last-second catch earns ~0 —
+    # this makes catching AS EARLY AS POSSIBLE strictly optimal (on top of the
+    # flat target_catch_reward), rather than merely catching eventually. 0 = off.
+    catch_time_bonus: float = 0.0
     # Partial observability knobs (harder levels): drop the target velocity from
     # the observation and/or add Gaussian noise (meters) to the observed target
     # position. Noise affects perception only — reward/catch use the true state.
@@ -101,6 +117,20 @@ class EnvConfig:
     chase_target_speed_cap: float = 0.4       # target velocity cap in [0,1] (×_MAX_SPEED)
     chase_target_gain: float = 0.5            # P-gain of the target's waypoint follower
     chase_waypoint_reach: float = 1.5         # target advances to next waypoint within this
+
+    # PyFlyt QuadX drone model (both pursuer and target use it). "cf2x" is the
+    # default nano Crazyflie-2 (~9 cm, 27 g). "primitive_drone" is a ~45 cm
+    # motor-to-motor, 1 kg quad shipped pre-tuned by PyFlyt for velocity control —
+    # a more realistic, larger airframe. Resolved from PyFlyt's models/vehicles/.
+    drone_model: str = "cf2x"
+
+    # Whether the observation includes the depth camera image. For the chase task
+    # the target's relative position + velocity are already in the `state` vector
+    # (and there are no obstacles), so the depth image carries no extra task
+    # information — dropping it removes the CNN encoder + image reconstruction from
+    # the world model (the dominant DreamerV3 compute) AND the per-step camera
+    # render (~29% of env step). Set False for fast state-only pursuit training.
+    observe_depth: bool = True
 
     @classmethod
     def from_yaml(cls, path: str | Path) -> EnvConfig:

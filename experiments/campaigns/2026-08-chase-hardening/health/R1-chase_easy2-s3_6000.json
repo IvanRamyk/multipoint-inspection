@@ -1,0 +1,31 @@
+{
+  "verdict": "healthy",
+  "reasons": [
+    "all monitored signals within expected ranges"
+  ],
+  "evidence": {
+    "run_dir": "logs/runs/dreamer_v3/DroneChase-sheeprl-v0/2026-08-31_07-12-57_dreamer_v3_DroneChase-sheeprl-v0_3/version_0",
+    "last_step": 7000,
+    "n_points": 3,
+    "event_age_minutes": 0.8,
+    "max_episode_steps": 600,
+    "reward_last": -22.529,
+    "reward_mean": -17.769,
+    "reward_min": -23.818,
+    "reward_max": -6.961,
+    "reward_recent_mean": -23.173,
+    "reward_slope_per_1k_steps": 1.2892,
+    "window_points": 2,
+    "reward_improvement": -16.2129,
+    "reward_improvement_stderr": 0.6446,
+    "ep_len_last": 159.0,
+    "ep_len_recent_mean": 261.2,
+    "sps_train_recent": 0.57,
+    "wm_loss_recent_mean": 11.2522,
+    "wm_loss_trailing_median": 12.7662,
+    "kl_baseline_median": 4.1872,
+    "kl_recent_mean": 6.3992,
+    "nan_tags": []
+  },
+  "checked_at": "2026-08-31T07:59:17Z"
+}

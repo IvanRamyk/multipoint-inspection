@@ -56,18 +56,19 @@ class DroneChaseEnv(gymnasium.Env):
             image_height=self.config.image_height,
             agent_hz=self.config.agent_hz,
             render=(render_mode == "human"),
+            drone_model=self.config.drone_model,
         )
 
-        self.observation_space = gymnasium.spaces.Dict(
-            {
-                "depth": gymnasium.spaces.Box(
-                    0.0, 100.0,
-                    shape=(self.config.image_height, self.config.image_width, 1),
-                    dtype=np.float32,
-                ),
-                "state": gymnasium.spaces.Box(-np.inf, np.inf, shape=(_STATE_DIM,), dtype=np.float32),
-            }
-        )
+        obs_spaces = {
+            "state": gymnasium.spaces.Box(-np.inf, np.inf, shape=(_STATE_DIM,), dtype=np.float32),
+        }
+        if self.config.observe_depth:
+            obs_spaces["depth"] = gymnasium.spaces.Box(
+                0.0, 100.0,
+                shape=(self.config.image_height, self.config.image_width, 1),
+                dtype=np.float32,
+            )
+        self.observation_space = gymnasium.spaces.Dict(obs_spaces)
         self.action_space = gymnasium.spaces.Box(-1.0, 1.0, shape=(3,), dtype=np.float32)
 
         self._dt = 1.0 / self.config.agent_hz
@@ -176,6 +177,14 @@ class DroneChaseEnv(gymnasium.Env):
         curr_dist = float(np.linalg.norm(drone.position - target.position))
         if not terminated and curr_dist < self.config.target_reach_distance:
             reward += self.config.target_catch_reward
+            # Time-decaying bonus: catching earlier is worth more (see config).
+            if self.config.catch_time_bonus > 0.0:
+                remaining_frac = max(
+                    0.0,
+                    (self.config.max_episode_steps - self._step_count)
+                    / self.config.max_episode_steps,
+                )
+                reward += self.config.catch_time_bonus * remaining_frac
             terminated = True
             self._caught = True
 
@@ -188,6 +197,15 @@ class DroneChaseEnv(gymnasium.Env):
         # step (a catch sets terminated but the step still spent time at distance).
         if self.config.distance_penalty > 0.0:
             reward -= self.config.distance_penalty * curr_dist
+        # Dense pursuer ground-avoidance: penalise flying below the safety margin,
+        # ramping toward the ground, so the pursuer gets an early "keep altitude"
+        # gradient instead of only the sparse terminal crash penalty.
+        if self.config.pursuer_ground_penalty > 0.0:
+            alt = float(drone.position[2])
+            if alt < self.config.pursuer_ground_margin:
+                reward -= self.config.pursuer_ground_penalty * (
+                    self.config.pursuer_ground_margin - alt
+                )
         self._prev_dist = curr_dist
 
         truncated = self._step_count >= self.config.max_episode_steps
@@ -234,7 +252,6 @@ class DroneChaseEnv(gymnasium.Env):
     def _build_obs(self) -> dict[str, np.ndarray]:
         drone = self.backend.get_drone_state()
         target = self.backend.get_target_state()
-        depth = np.clip(self.backend.get_depth_image(), 0.0, 100.0)
         wind = self._wind.current if self.config.wind_enabled else np.zeros(3, dtype=np.float32)
 
         target_pos = target.position
@@ -255,7 +272,10 @@ class DroneChaseEnv(gymnasium.Env):
                 target_vel,
             ]
         ).astype(np.float32)
-        return {"depth": depth, "state": state_vec}
+        obs = {"state": state_vec}
+        if self.config.observe_depth:
+            obs["depth"] = np.clip(self.backend.get_depth_image(), 0.0, 100.0)
+        return obs
 
     def _build_info(self) -> dict[str, Any]:
         drone_pos = self._positions[-1] if self._positions else None

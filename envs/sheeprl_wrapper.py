@@ -22,14 +22,20 @@ class SheepRLCompatWrapper(gym.ObservationWrapper):
         super().__init__(env)
         self.max_depth = max_depth
         old_spaces = dict(env.observation_space.spaces)
-        h, w, c = old_spaces["depth"].shape
-        old_spaces["depth"] = gym.spaces.Box(
-            low=0, high=255, shape=(h, w, c), dtype=np.uint8
-        )
+        # State-only envs (observe_depth=False) have no depth key — nothing to
+        # convert, the wrapper is then a passthrough for the state vector.
+        self._has_depth = "depth" in old_spaces
+        if self._has_depth:
+            h, w, c = old_spaces["depth"].shape
+            old_spaces["depth"] = gym.spaces.Box(
+                low=0, high=255, shape=(h, w, c), dtype=np.uint8
+            )
         self.observation_space = gym.spaces.Dict(old_spaces)
 
     def observation(self, obs: dict) -> dict:
-        """Normalize depth to [0, 255] uint8."""
+        """Normalize depth to [0, 255] uint8 (no-op when there is no camera)."""
+        if not self._has_depth:
+            return obs
         depth = obs["depth"]
         depth_normalized = np.clip(depth / self.max_depth * 255, 0, 255).astype(
             np.uint8

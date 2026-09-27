@@ -21,8 +21,9 @@ from envs.backends.pyflyt_backend import PyFlytBackend, _MAX_SPEED
 class PyFlytChaseBackend(PyFlytBackend):
     """PyFlyt backend with a pursuer (idx 0) and a physical target drone (idx 1)."""
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args, drone_model: str = "cf2x", **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self._drone_model = drone_model
         self._target_id: int | None = None
         self._target_marker_ids: list[int] = []
 
@@ -51,10 +52,16 @@ class PyFlytChaseBackend(PyFlytBackend):
         start_pos = np.array([drone_start, target_start], dtype=np.float64)
         start_orn = np.zeros((2, 3), dtype=np.float64)
 
+        # Both drones use the same model. drone_model selects the QuadX airframe
+        # (e.g. "cf2x" nano vs "primitive_drone" ~45 cm); resolved by PyFlyt from
+        # its models/vehicles/ dir. Passed per-drone via drone_options.
+        drone_options = [{"drone_model": self._drone_model}, {"drone_model": self._drone_model}]
+
         self._aviary = Aviary(
             start_pos=start_pos,
             start_orn=start_orn,
             drone_type="quadx",
+            drone_options=drone_options,
             render=self._render,
             physics_hz=240,
             seed=seed,

@@ -34,3 +34,13 @@ __pycache__/
 # Accidental literal "~" directory from an unquoted shell expansion.
 /~/
 .claude/settings.local.json
+
+# Campaign artifacts: the JSON evals, journals, spec.md and runs.jsonl ARE tracked,
+# but the heavy/transient outputs are not (rollout trajectories, contact-sheet PNGs,
+# and the orchestrator's file locks).
+experiments/campaigns/**/trajectories/
+experiments/campaigns/**/verdicts/*.png
+experiments/campaigns/**/*.lock
+
+# Warm-start checkpoints banked locally (binary, large).
+/resume_ckpts
