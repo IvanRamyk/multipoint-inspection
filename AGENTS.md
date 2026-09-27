@@ -89,7 +89,7 @@ eval/
   route_visualizer.py    Inspection route plots.
   episode_recorder.py    Frame capture during training rollouts.
 
-docs/reports/            Written campaign reports (e.g. SUMMARY_UA.md, CHASE_BIG_REPORT.md). The
+docs/reports/EXPERIMENTS.md   Consolidated log of every chase experiment (E1-E5) in one format. The
                          binary artifacts they reference (videos, trajectories) stay gitignored.
 
 deploy/                  vast.ai GPU orchestration + AirSim/UE5 setup. See deploy/README.md.
@@ -304,7 +304,7 @@ crash) vs a hand-tuned scripted lead-pursuit **98.9%** (18.8 s, 8 crashes). Read
 statistical tie, but the learned policy is **more efficient (intercepts ~8% faster) and safer (~8×
 fewer crashes)**. The development arc: cf2x nano vision task 2% → realistic-drone redesign 77% →
 higher altitude + more time 94% → continued training 97% → dense ground penalty 99.3%. Reports in
-`docs/reports/` (`SUMMARY_UA.md`, `CHASE_BIG_REPORT.md`); analysis tooling in `scripts/analysis/`.
+the consolidated `docs/reports/EXPERIMENTS.md` (entry E5); analysis tooling in `scripts/analysis/`.
 
 The earlier ladder (`chase_veryeasy → chase_mid → chase_easy2`) reached ~70% on the easier cf2x
 `chase_easy2.yaml` and predates the redesign.
